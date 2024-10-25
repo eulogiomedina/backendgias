@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const { LoginAudit } = require('../models/Audit');  // Importar el modelo de auditoría
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 exports.login = async (req, res) => {
   const { correo, password } = req.body;

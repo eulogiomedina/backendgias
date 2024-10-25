@@ -20,6 +20,7 @@
     "@sendinblue/client": "^3.3.1",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "dompurify": "^3.1.7",

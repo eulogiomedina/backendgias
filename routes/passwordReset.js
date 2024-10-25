@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const User = require('../models/User');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const SibApiV3Sdk = require('@sendinblue/client');
 const { PasswordChangeAudit } = require('../models/Audit'); // Importar el modelo de auditoría
 const router = express.Router();
