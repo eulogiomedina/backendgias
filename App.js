@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const session = require('express-session');
-const crypto = require('bcryptjs');
+const crypto = require('crypto');
 const MongoStore = require('connect-mongo');
 const protectedRoutes = require('./routes/protectedRoutes');
 
@@ -13,7 +13,7 @@ const app = express();
 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
+  origin: 'https://forntendgias.vercel.app/', // URL de tu frontend
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
@@ -22,7 +22,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Conectar a MongoDB
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Conectado a MongoDB'))
   .catch(err => console.log(err));
 
@@ -74,10 +74,6 @@ app.use('/api/slogan', sloganRoutes);
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
   res.send('¡Servidor funcionando!');
-});
-
-app.get('/test', (req, res) => {
-  res.send('Test funcionando');
 });
 
 // Ruta para cerrar sesión

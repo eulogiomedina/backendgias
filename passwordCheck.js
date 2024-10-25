@@ -1,4 +1,4 @@
-const crypto = require('bcryptjs');
+const crypto = require('crypto');
 const axios = require('axios');
 
 async function checkPassword(password) {
