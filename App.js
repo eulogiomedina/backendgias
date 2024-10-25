@@ -76,6 +76,10 @@ app.get('/', (req, res) => {
   res.send('¡Servidor funcionando!');
 });
 
+app.get('/test', (req, res) => {
+  res.send('Test funcionando');
+});
+
 // Ruta para cerrar sesión
 app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(err => {
