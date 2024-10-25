@@ -13,7 +13,7 @@ const app = express();
 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app/', // URL de tu frontend
+  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
@@ -74,6 +74,10 @@ app.use('/api/slogan', sloganRoutes);
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
   res.send('¡Servidor funcionando!');
+});
+
+app.get('/test', (req, res) => {
+  res.send('Test funcionando');
 });
 
 // Ruta para cerrar sesión
