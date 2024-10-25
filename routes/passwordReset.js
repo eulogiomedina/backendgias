@@ -36,7 +36,7 @@ router.post('/send-code', async (req, res) => {
       sender: { email: process.env.EMAIL_USER_BREVO, name: 'Grupo GIAS' },
       subject: 'Recuperación de contraseña',
       htmlContent: `<p>Haz clic en el siguiente enlace para cambiar tu contraseña:</p>
-                    <a href="http://localhost:3000/reset-password?token=${resetToken}">Restablecer Contraseña</a>`,
+                    <a href="https://forntendgias.vercel.app/reset-password?token=${resetToken}">Restablecer Contraseña</a>`,
     };
 
     await apiInstance.sendTransacEmail(sendSmtpEmail);
