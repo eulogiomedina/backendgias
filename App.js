@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const MongoStore = require('connect-mongo');
 const protectedRoutes = require('./routes/protectedRoutes');
 
+
 dotenv.config();
 
 const app = express();
@@ -54,6 +55,7 @@ const contactRoute = require('./routes/contact');
 const socialLinksRoutes = require('./routes/socialLinks');
 const legalBoundaryRoute = require('./routes/legalBoundaryRoutes');
 const sloganRoutes = require('./routes/SloganRoutes');
+const logoRoutes = require('./routes/logoRoutes'); // Nueva ruta de logo  
 
 
 // Usar las rutas
@@ -70,6 +72,7 @@ app.use('/api/audit', auditRoute); // Usar rutas de auditoría
 app.use('/api/social-links', socialLinksRoutes);
 app.use('/api/legal-boundaries', legalBoundaryRoute);
 app.use('/api/slogan', sloganRoutes);
+app.use('/api/logo', logoRoutes); // Usar la ruta de logo
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
