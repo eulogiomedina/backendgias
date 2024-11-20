@@ -55,6 +55,7 @@ const contactRoute = require('./routes/contact');
 const socialLinksRoutes = require('./routes/socialLinks');
 const legalBoundaryRoute = require('./routes/legalBoundaryRoutes');
 const sloganRoutes = require('./routes/SloganRoutes');
+const titleRoutes = require('./routes/titleRoutes');
 const logoRoutes = require('./routes/logoRoutes'); // Nueva ruta de logo  
 
 
@@ -73,6 +74,7 @@ app.use('/api/social-links', socialLinksRoutes);
 app.use('/api/legal-boundaries', legalBoundaryRoute);
 app.use('/api/slogan', sloganRoutes);
 app.use('/api/logo', logoRoutes); // Usar la ruta de logo
+app.use('/api/title', titleRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
