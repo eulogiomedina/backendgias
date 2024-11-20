@@ -15,9 +15,13 @@ const termSchema = new mongoose.Schema({
   },
   isCurrent: {
     type: Boolean,
-    default: true,
+    default: false,
   },
-}, { timestamps: true });
+  isDeleted: {
+    type: Boolean,
+    default: false, // Campo para la eliminación lógica
+  },
+}, { timestamps: true }); // timestamps para createdAt y updatedAt
 
 const Term = mongoose.model('Term', termSchema);
 
