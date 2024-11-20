@@ -6,6 +6,9 @@ const session = require('express-session');
 const crypto = require('crypto');
 const MongoStore = require('connect-mongo');
 const protectedRoutes = require('./routes/protectedRoutes');
+const validateRoutes = require('./routes/validate');
+const phoneRoutes = require('./routes/validatePhone');
+const cupomexRoutes = require('./routes/cupomex');
 
 
 dotenv.config();
@@ -14,7 +17,7 @@ const app = express();
 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
+  origin: 'http://localhost:3000', // URL de tu frontend
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
@@ -73,6 +76,9 @@ app.use('/api/social-links', socialLinksRoutes);
 app.use('/api/legal-boundaries', legalBoundaryRoute);
 app.use('/api/slogan', sloganRoutes);
 app.use('/api/logo', logoRoutes); // Usar la ruta de logo
+app.use('/api', validateRoutes);
+app.use('/api', phoneRoutes);
+app.use('/api', cupomexRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
@@ -91,7 +97,7 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Escuchar en el puerto configurado
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });

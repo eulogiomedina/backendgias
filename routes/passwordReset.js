@@ -28,7 +28,6 @@ router.post('/send-code', async (req, res) => {
 
     // Guardar el usuario con el token de restablecimiento
     await user.save();
-    console.log('Usuario guardado con éxito:', user);
 
     // Enviar el correo usando Brevo
     const sendSmtpEmail = {
@@ -36,7 +35,7 @@ router.post('/send-code', async (req, res) => {
       sender: { email: process.env.EMAIL_USER_BREVO, name: 'Grupo GIAS' },
       subject: 'Recuperación de contraseña',
       htmlContent: `<p>Haz clic en el siguiente enlace para cambiar tu contraseña:</p>
-                    <a href="https://forntendgias.vercel.app/reset-password?token=${resetToken}">Restablecer Contraseña</a>`,
+                    <a href="http://localhost:3000/reset-password?token=${resetToken}">Restablecer Contraseña</a>`,
     };
 
     await apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -51,9 +50,6 @@ router.post('/send-code', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   const { token, newPassword } = req.body;
 
-  console.log('Token recibido:', token);  // Verificación de token
-  console.log('Nueva contraseña recibida:', newPassword);  // Verificación de nueva contraseña
-
   try {
     const user = await User.findOne({
       resetPasswordToken: token,
@@ -61,34 +57,51 @@ router.post('/reset-password', async (req, res) => {
     });
 
     if (!user) {
-      console.log('No se encontró el usuario con ese token');  // Debugging del usuario no encontrado
       return res.status(400).json({ message: 'El token es inválido o ha expirado.' });
     }
 
-    console.log('Usuario encontrado:', user);
+    // Verificar si la nueva contraseña es igual a la actual
+    const isSameAsCurrent = await bcrypt.compare(newPassword, user.password);
+    if (isSameAsCurrent) {
+      return res.status(400).json({ message: 'La nueva contraseña no puede ser igual a la contraseña actual.' });
+    }
 
-    // Almacenar la contraseña anterior
-    const oldPassword = user.password;
+    // Verificar si la nueva contraseña está en el historial
+    const isPasswordInHistory = await Promise.all(
+      user.passwords_ant.map(async (oldPasswordHash) => {
+        return bcrypt.compare(newPassword, oldPasswordHash);
+      })
+    );
 
-    // Hashear la nueva contraseña
-    user.password = newPassword;
-    
+    if (isPasswordInHistory.includes(true)) {
+      return res.status(400).json({ message: 'No puedes usar una contraseña utilizada anteriormente.' });
+    }
+
+    // Hashear la nueva contraseña antes de guardarla
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Guardar la contraseña actual en el historial antes de actualizarla
+    if (user.passwords_ant.length >= 5) {
+      user.passwords_ant.shift(); // Limitar el historial a las últimas 5 contraseñas
+    }
+    user.passwords_ant.push(user.password); // Agregar la contraseña actual al historial
+
+    // Actualizar la contraseña con la nueva hasheada
+    user.password = hashedNewPassword;
+
     // Limpiar el token y la fecha de expiración
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
-    console.log('Contraseña hasheada antes de guardar:', user.password);
-
     // Guardar el usuario con la nueva contraseña
     await user.save();
-    console.log('Contraseña cambiada y usuario guardado:', user);
 
     // Registrar el cambio de contraseña en la auditoría
     await PasswordChangeAudit.create({
-      nombreCompleto: `${user.nombre} ${user.apellidos}`, // Concatenar nombre y apellidos
+      nombreCompleto: `${user.nombre} ${user.apellidos}`,
       correo: user.correo,
-      contraseñaAnterior: oldPassword, // Almacena la contraseña anterior (en texto plano)
-      nuevaContraseña: user.password, // Almacena la nueva contraseña (ya hasheada)
+      contraseñaAnterior: user.passwords_ant[user.passwords_ant.length - 1],
+      nuevaContraseña: user.password,
     });
 
     res.status(200).json({ message: 'Contraseña cambiada con éxito.' });

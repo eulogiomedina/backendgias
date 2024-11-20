@@ -8,32 +8,51 @@ const userSchema = new mongoose.Schema({
   apellidos: { type: String, required: true },
   correo: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  passwords_ant: [{ type: String, default: [] }], // Historial de contraseñas anteriores (hashed)
   telefono: { type: String, required: true },
   direccion: {
     ciudad: { type: String, required: true },
     colonia: { type: String, required: true },
-    calle: { type: String, required: true }
+    calle: { type: String, required: true },
   },
   loginAttempts: { type: Number, default: 0 }, // Intentos fallidos de inicio de sesión
   lockUntil: { type: Date }, // Tiempo hasta que la cuenta se desbloquee
-  isVerified: { type: Boolean, default: false },  // Estado de verificación de correo
-  verificationToken: { type: String },  // Token de verificación de correo
-  verificationTokenExpires: { type: Date },  // Fecha de expiración del token de verificación
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },  // Roles: 'user' o 'admin'
-  resetPasswordToken: { type: String },  // Token para restablecer la contraseña
-  resetPasswordExpires: { type: Date }  // Expiración del token de restablecimiento de contraseña
+  isVerified: { type: Boolean, default: false }, // Estado de verificación de correo
+  verificationToken: { type: String }, // Token de verificación de correo
+  verificationTokenExpires: { type: Date }, // Fecha de expiración del token de verificación
+  role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Roles: 'user' o 'admin'
+  resetPasswordToken: { type: String }, // Token para restablecer la contraseña
+  resetPasswordExpires: { type: Date }, // Expiración del token de restablecimiento de contraseña
 });
 
 // Máximo de intentos fallidos y tiempo de bloqueo
-const MAX_ATTEMPTS = 5; 
+const MAX_ATTEMPTS = 5;
 const LOCK_TIME = 2 * 60 * 1000; // 2 minutos de bloqueo
 
-// Cifrar la contraseña antes de guardarla
+// Middleware para cifrar la contraseña antes de guardarla
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next(); // Solo cifrar si la contraseña ha sido modificada
-  console.log('Modificando contraseña antes de guardar'); // Mensaje para debug
+
+  console.log('Preparando para cifrar la nueva contraseña');
+
+  // Inicializar passwords_ant si no existe
+  if (!this.passwords_ant) {
+    this.passwords_ant = [];
+  }
+
+  // Agregar la contraseña actual al historial si no es una nueva cuenta
+  if (!this.isNew && this.password) {
+    if (this.passwords_ant.length >= 5) {
+      this.passwords_ant.shift(); // Mantener solo las últimas 5 contraseñas
+    }
+    this.passwords_ant.push(this.password); // Agregar la contraseña actual al historial
+  }
+
+  // Cifrar la nueva contraseña
   const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt); // Hashear la nueva contraseña
+  this.password = await bcrypt.hash(this.password, salt);
+
+  console.log('Nueva contraseña cifrada con éxito');
   next();
 });
 
@@ -80,6 +99,19 @@ userSchema.methods.comparePassword = function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password); // Retorna true o false
 };
 
+// Método para verificar si la nueva contraseña ya ha sido utilizada
+userSchema.methods.isPasswordUsed = async function (newPassword) {
+  if (!this.passwords_ant) return false; // Si no hay historial, no hay conflicto
+
+  // Comprobar si la contraseña está en el historial
+  const isUsed = await Promise.all(
+    this.passwords_ant.map(async (oldPasswordHash) => {
+      return bcrypt.compare(newPassword, oldPasswordHash);
+    })
+  );
+
+  return isUsed.includes(true);
+};
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
