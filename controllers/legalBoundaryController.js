@@ -1,10 +1,12 @@
 const LegalBoundary = require('../models/legalBoundaryModel');
 const mongoose = require('mongoose');
 
-// Obtener todos los deslindes legales
+// Obtener todos los deslindes legales (excluyendo eliminados por defecto)
 exports.getAllLegalBoundaries = async (req, res) => {
   try {
-    const legalBoundaries = await LegalBoundary.find().select('title content version isCurrent createdAt');
+    const legalBoundaries = await LegalBoundary.find({ isDeleted: false })
+      .select('title content version isCurrent createdAt')
+      .sort({ createdAt: -1 });
     res.status(200).json(legalBoundaries);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -18,7 +20,7 @@ exports.createLegalBoundary = async (req, res) => {
     await LegalBoundary.updateMany({ isCurrent: true }, { isCurrent: false });
 
     // Crear el nuevo deslinde legal como vigente
-    const lastLegalBoundary = await LegalBoundary.findOne().sort({ createdAt: -1 });
+    const lastLegalBoundary = await LegalBoundary.findOne().sort({ version: -1 });
     const newVersion = lastLegalBoundary ? lastLegalBoundary.version + 1 : 1;
 
     const legalBoundary = new LegalBoundary({
@@ -53,38 +55,57 @@ exports.updateLegalBoundary = async (req, res) => {
   }
 
   try {
-    // Desactivar el deslinde vigente actual
-    await LegalBoundary.updateMany({ isCurrent: true }, { isCurrent: false });
+    const existingLegalBoundary = await LegalBoundary.findById(req.params.id);
+    if (!existingLegalBoundary) return res.status(404).json({ message: 'Deslinde legal no encontrado' });
 
-    // Crear la nueva versión como vigente
-    const lastLegalBoundary = await LegalBoundary.findById(req.params.id);
-    if (!lastLegalBoundary) return res.status(404).json({ message: 'Deslinde legal no encontrado' });
+    // Buscar la versión más alta en toda la colección
+    const lastLegalBoundary = await LegalBoundary.findOne().sort({ version: -1 });
+    const newVersion = lastLegalBoundary ? lastLegalBoundary.version + 1 : 1;
 
-    const newVersion = lastLegalBoundary.version + 1;
-
-    const updatedLegalBoundary = await LegalBoundary.create({
-      title: req.body.title,
-      content: req.body.content,
+    // Crear una nueva versión del deslinde
+    const updatedLegalBoundary = new LegalBoundary({
+      title: req.body.title || existingLegalBoundary.title,
+      content: req.body.content || existingLegalBoundary.content,
       version: newVersion,
-      isCurrent: true, // Nuevo deslinde vigente
+      isCurrent: true,
     });
 
-    res.status(200).json(updatedLegalBoundary);
+    // Desactivar todos los deslindes vigentes
+    await LegalBoundary.updateMany({ isCurrent: true }, { isCurrent: false });
+
+    // Guardar la nueva versión
+    const savedLegalBoundary = await updatedLegalBoundary.save();
+    res.status(200).json(savedLegalBoundary);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
-// Eliminar un deslinde legal
-exports.deleteLegalBoundary = async (req, res) => {
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-    return res.status(400).json({ message: 'ID de deslinde legal no válido' });
-  }
-
+// Eliminar lógicamente un deslinde legal
+exports.softDeleteLegalBoundary = async (req, res) => {
   try {
-    const deletedLegalBoundary = await LegalBoundary.findByIdAndDelete(req.params.id);
-    if (!deletedLegalBoundary) return res.status(404).json({ message: 'Deslinde legal no encontrado' });
-    res.status(204).send(); // No content response
+    const { id } = req.params;
+    const legalBoundary = await LegalBoundary.findById(id);
+    if (!legalBoundary) {
+      return res.status(404).json({ message: 'Deslinde legal no encontrado' });
+    }
+
+    legalBoundary.isDeleted = true; // Cambiar el estado a eliminado lógicamente
+    await legalBoundary.save();
+
+    res.status(200).json({ message: 'Deslinde legal eliminado lógicamente' });
+  } catch (error) {
+    console.error('Error al eliminar el deslinde legal:', error);
+    res.status(500).json({ message: 'Error al eliminar el deslinde legal' });
+  }
+};
+
+// Restaurar un deslinde legal eliminado
+exports.restoreLegalBoundary = async (req, res) => {
+  try {
+    const legalBoundary = await LegalBoundary.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
+    if (!legalBoundary) return res.status(404).json({ message: 'Deslinde legal no encontrado' });
+    res.status(200).json(legalBoundary);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
