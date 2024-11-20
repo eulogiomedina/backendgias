@@ -1,24 +1,26 @@
 const Term = require('../models/Term');
 const mongoose = require('mongoose');
 
-// Obtener todos los términos y condiciones
+// Obtener todos los términos (excluyendo eliminados por defecto)
 exports.getAllTerms = async (req, res) => {
   try {
-    const terms = await Term.find().select('title content version isCurrent createdAt');
+    const terms = await Term.find({ isDeleted: false })
+      .select('title content version isCurrent createdAt')
+      .sort({ createdAt: -1 });
     res.status(200).json(terms);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Crear nuevos términos y condiciones
+// Crear un nuevo término
 exports.createTerm = async (req, res) => {
   try {
     // Desactivar todos los términos vigentes
     await Term.updateMany({ isCurrent: true }, { isCurrent: false });
 
     // Crear la nueva versión como vigente
-    const lastTerm = await Term.findOne().sort({ createdAt: -1 });
+    const lastTerm = await Term.findOne().sort({ version: -1 });
     const newVersion = lastTerm ? lastTerm.version + 1 : 1;
 
     const term = new Term({
@@ -53,22 +55,25 @@ exports.updateTerm = async (req, res) => {
   }
 
   try {
-    // Desactivar el término vigente actual
-    await Term.updateMany({ isCurrent: true }, { isCurrent: false });
+    const existingTerm = await Term.findById(req.params.id);
+    if (!existingTerm) return res.status(404).json({ message: 'Término no encontrado' });
 
-    // Crear la nueva versión como vigente
-    const lastTerm = await Term.findById(req.params.id);
-    if (!lastTerm) return res.status(404).json({ message: 'Término no encontrado' });
-    
-    const newVersion = lastTerm.version + 1;
+    // Buscar la versión más alta en toda la colección
+    const lastTerm = await Term.findOne().sort({ version: -1 });
+    const newVersion = lastTerm ? lastTerm.version + 1 : 1;
 
+    // Crear una nueva versión del término
     const updatedTerm = new Term({
-      title: req.body.title || lastTerm.title,
-      content: req.body.content || lastTerm.content,
+      title: req.body.title || existingTerm.title,
+      content: req.body.content || existingTerm.content,
       version: newVersion,
       isCurrent: true,
     });
 
+    // Desactivar todos los términos vigentes
+    await Term.updateMany({ isCurrent: true }, { isCurrent: false });
+
+    // Guardar la nueva versión
     const savedTerm = await updatedTerm.save();
     res.status(200).json(savedTerm);
   } catch (error) {
@@ -76,12 +81,31 @@ exports.updateTerm = async (req, res) => {
   }
 };
 
-// Eliminar un término
-exports.deleteTerm = async (req, res) => {
+// Eliminar lógicamente un término
+exports.softDeleteTerm = async (req, res) => {
   try {
-    const deletedTerm = await Term.findByIdAndDelete(req.params.id);
-    if (!deletedTerm) return res.status(404).json({ message: 'Término no encontrado' });
-    res.status(204).send();
+    const { id } = req.params;
+    const term = await Term.findById(id);
+    if (!term) {
+      return res.status(404).json({ message: 'Término no encontrado' });
+    }
+
+    term.isDeleted = true; // Cambiar el estado a eliminado
+    await term.save();
+
+    res.status(200).json({ message: 'Término eliminado lógicamente' });
+  } catch (error) {
+    console.error('Error al eliminar el término:', error);
+    res.status(500).json({ message: 'Error al eliminar el término' });
+  }
+};
+
+// Restaurar un término eliminado
+exports.restoreTerm = async (req, res) => {
+  try {
+    const term = await Term.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
+    if (!term) return res.status(404).json({ message: 'Término no encontrado' });
+    res.status(200).json(term);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

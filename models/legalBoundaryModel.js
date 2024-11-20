@@ -17,7 +17,11 @@ const legalBoundarySchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-}, { timestamps: true });
+  isDeleted: {
+    type: Boolean,
+    default: false, // Para soporte de eliminación lógica
+  },
+}, { timestamps: true }); // timestamps para createdAt y updatedAt
 
 const LegalBoundary = mongoose.model('LegalBoundary', legalBoundarySchema);
 

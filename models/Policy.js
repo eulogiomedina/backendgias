@@ -1,4 +1,3 @@
-// models/Policy.js
 const mongoose = require('mongoose');
 
 const policySchema = new mongoose.Schema({
@@ -10,7 +9,19 @@ const policySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-}, { timestamps: true });
+  version: {
+    type: Number,
+    default: 1,
+  },
+  isCurrent: {
+    type: Boolean,
+    default: false,
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+}, { timestamps: true }); // timestamps para createdAt y updatedAt
 
 const Policy = mongoose.model('Policy', policySchema);
 
