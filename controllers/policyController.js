@@ -1,10 +1,12 @@
-// controllers/policyController.js
 const Policy = require('../models/Policy');
+const mongoose = require('mongoose');
 
-// Obtener todas las políticas
+// Obtener todas las políticas (excluyendo eliminadas por defecto)
 exports.getAllPolicies = async (req, res) => {
   try {
-    const policies = await Policy.find();
+    const policies = await Policy.find({ isDeleted: false })
+      .select('title content version isCurrent createdAt')
+      .sort({ createdAt: -1 });
     res.status(200).json(policies);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -13,12 +15,21 @@ exports.getAllPolicies = async (req, res) => {
 
 // Crear una nueva política
 exports.createPolicy = async (req, res) => {
-  const policy = new Policy({
-    title: req.body.title,
-    content: req.body.content,
-  });
-
   try {
+    // Desactivar todas las políticas vigentes
+    await Policy.updateMany({ isCurrent: true }, { isCurrent: false });
+
+    // Crear la nueva versión como vigente
+    const lastPolicy = await Policy.findOne().sort({ version: -1 });
+    const newVersion = lastPolicy ? lastPolicy.version + 1 : 1;
+
+    const policy = new Policy({
+      title: req.body.title,
+      content: req.body.content,
+      version: newVersion,
+      isCurrent: true, // Esta será la nueva política vigente
+    });
+
     const savedPolicy = await policy.save();
     res.status(201).json(savedPolicy);
   } catch (error) {
@@ -37,23 +48,66 @@ exports.getPolicyById = async (req, res) => {
   }
 };
 
-// Actualizar una política por ID
+// Actualizar una política
 exports.updatePolicy = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'ID de política no válido' });
+  }
+
   try {
-    const updatedPolicy = await Policy.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedPolicy) return res.status(404).json({ message: 'Política no encontrada' });
-    res.status(200).json(updatedPolicy);
+    const existingPolicy = await Policy.findById(req.params.id);
+    if (!existingPolicy) return res.status(404).json({ message: 'Política no encontrada' });
+
+    // Buscar la versión más alta en toda la colección
+    const lastPolicy = await Policy.findOne().sort({ version: -1 });
+    const newVersion = lastPolicy ? lastPolicy.version + 1 : 1;
+
+    // Crear una nueva versión de la política
+    const updatedPolicy = new Policy({
+      title: req.body.title || existingPolicy.title,
+      content: req.body.content || existingPolicy.content,
+      version: newVersion,
+      isCurrent: true,
+    });
+
+    // Desactivar todas las políticas vigentes
+    await Policy.updateMany({ isCurrent: true }, { isCurrent: false });
+
+    // Guardar la nueva versión
+    const savedPolicy = await updatedPolicy.save();
+    res.status(200).json(savedPolicy);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
-// Eliminar una política por ID
-exports.deletePolicy = async (req, res) => {
+
+// Eliminar lógicamente una política
+exports.softDeletePolicy = async (req, res) => {
   try {
-    const deletedPolicy = await Policy.findByIdAndDelete(req.params.id);
-    if (!deletedPolicy) return res.status(404).json({ message: 'Política no encontrada' });
-    res.status(204).send();
+      const { id } = req.params;
+      const policy = await Policy.findById(id);
+      if (!policy) {
+          return res.status(404).json({ message: 'Política no encontrada' });
+      }
+
+      policy.isDeleted = true; // Cambiar el estado de la política a eliminada lógicamente
+      await policy.save();
+
+      res.status(200).json({ message: 'Política eliminada lógicamente' });
+  } catch (error) {
+      console.error('Error al eliminar la política:', error);
+      res.status(500).json({ message: 'Error al eliminar la política' });
+  }
+};
+
+
+// Restaurar una política eliminada
+exports.restorePolicy = async (req, res) => {
+  try {
+    const policy = await Policy.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
+    if (!policy) return res.status(404).json({ message: 'Política no encontrada' });
+    res.status(200).json(policy);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
