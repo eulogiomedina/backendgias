@@ -41,7 +41,7 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    const verificationUrl = `http://localhost:5000/api/users/verify/${verificationToken}`;
+    const verificationUrl = `https://backendgias.onrender.com/api/users/verify/${verificationToken}`;
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: correo,
