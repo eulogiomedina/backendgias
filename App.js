@@ -9,6 +9,7 @@ const protectedRoutes = require('./routes/protectedRoutes');
 const validateRoutes = require('./routes/validate');
 const phoneRoutes = require('./routes/validatePhone');
 const cupomexRoutes = require('./routes/cupomex');
+const blockedAccountsRoutes = require('./routes/blockedAccounts')
 
 
 dotenv.config();
@@ -58,7 +59,6 @@ const contactRoute = require('./routes/contact');
 const socialLinksRoutes = require('./routes/socialLinks');
 const legalBoundaryRoute = require('./routes/legalBoundaryRoutes');
 const sloganRoutes = require('./routes/SloganRoutes');
-const titleRoutes = require('./routes/titleRoutes');
 const logoRoutes = require('./routes/logoRoutes'); // Nueva ruta de logo  
 
 
@@ -79,8 +79,8 @@ app.use('/api/slogan', sloganRoutes);
 app.use('/api/logo', logoRoutes); // Usar la ruta de logo
 app.use('/api', validateRoutes);
 app.use('/api', phoneRoutes);
-app.use('/api', cupomexRoutes);
-app.use('/api/title', titleRoutes);
+app.use('/api/cupomex', cupomexRoutes);
+app.use('/api/accounts', blockedAccountsRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
