@@ -24,7 +24,7 @@ router.post('/register', async (req, res) => {
       correo,
       password,
       telefono,
-      direccion: { ciudad, colonia, calle },
+      direccion: { estado, municipio, colonia },
       verificationToken,
       verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // Validez de 24 horas
     });

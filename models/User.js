@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const BlockedAccount = require('./BlockedAccount'); // Importar el modelo de cuentas bloqueadas
 
 // Definición del esquema del usuario
 const userSchema = new mongoose.Schema({
@@ -11,9 +12,9 @@ const userSchema = new mongoose.Schema({
   passwords_ant: [{ type: String, default: [] }], // Historial de contraseñas anteriores (hashed)
   telefono: { type: String, required: true },
   direccion: {
-    ciudad: { type: String, required: true },
+    estado: { type: String, required: true },
+    municipio: { type: String, required: true },
     colonia: { type: String, required: true },
-    calle: { type: String, required: true },
   },
   loginAttempts: { type: Number, default: 0 }, // Intentos fallidos de inicio de sesión
   lockUntil: { type: Date }, // Tiempo hasta que la cuenta se desbloquee
@@ -82,6 +83,14 @@ userSchema.methods.incrementLoginAttempts = async function () {
     if (this.loginAttempts >= MAX_ATTEMPTS) {
       // Bloquear la cuenta si se alcanzó el máximo de intentos fallidos
       this.lockUntil = Date.now() + LOCK_TIME;
+
+      // Registrar en la colección de cuentas bloqueadas
+      try {
+        await BlockedAccount.create({ correo: this.correo });
+        console.log(`Cuenta bloqueada registrada para el correo: ${this.correo}`);
+      } catch (error) {
+        console.error('Error al registrar la cuenta bloqueada:', error);
+      }
     }
   }
   await this.save();
