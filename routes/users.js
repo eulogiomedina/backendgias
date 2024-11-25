@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Ruta para registrar usuario
 router.post('/register', async (req, res) => {
-  const { nombre, apellidos, correo, password, telefono, estado, municipio, colonia } = req.body;
+  const { nombre, apellidos, correo, password, telefono, estado, municipio, colonia } = req.body;//modificado datos
 
   try {
     // Verificar si el correo ya está registrado
@@ -24,7 +24,7 @@ router.post('/register', async (req, res) => {
       correo,
       password,
       telefono,
-      direccion: { estado, municipio, colonia },
+      direccion: { estado, municipio, colonia },//modificado datos
       verificationToken,
       verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // Validez de 24 horas
     });
