@@ -18,7 +18,7 @@ const app = express();
 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias-94fhi97km-medinas-projects-bc9eba28.vercel.app/', // URL de tu frontend
+  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
