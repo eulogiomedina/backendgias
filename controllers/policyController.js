@@ -1,17 +1,20 @@
 const Policy = require('../models/Policy');
 const mongoose = require('mongoose');
 
-// Obtener todas las políticas (excluyendo eliminadas por defecto)
+// Obtener todas las políticas (incluyendo eliminadas)
 exports.getAllPolicies = async (req, res) => {
   try {
-    const policies = await Policy.find({ isDeleted: false })
-      .select('title content version isCurrent createdAt')
-      .sort({ createdAt: -1 });
-    res.status(200).json(policies);
+    // Obtiene todas las políticas sin filtrar por isDeleted
+    const policies = await Policy.find({})
+      .select('title content version isCurrent isDeleted createdAt')
+      .sort({ createdAt: -1 }); // Ordenar por fecha de creación, descendente
+
+    res.status(200).json(policies); // Enviar todas las políticas como respuesta
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message }); // Manejar errores
   }
 };
+
 
 // Crear una nueva política
 exports.createPolicy = async (req, res) => {

@@ -1,25 +1,27 @@
 const LegalBoundary = require('../models/legalBoundaryModel');
 const mongoose = require('mongoose');
 
-// Obtener todos los deslindes legales (excluyendo eliminados por defecto)
+// Obtener todos los deslindes legales (incluyendo eliminados)
 exports.getAllLegalBoundaries = async (req, res) => {
   try {
-    const legalBoundaries = await LegalBoundary.find({ isDeleted: false })
-      .select('title content version isCurrent createdAt')
-      .sort({ createdAt: -1 });
-    res.status(200).json(legalBoundaries);
+    // Obtiene todos los deslindes legales sin filtrar por isDeleted
+    const legalBoundaries = await LegalBoundary.find({})
+      .select('title content version isCurrent isDeleted createdAt')
+      .sort({ createdAt: -1 }); // Ordenar por fecha de creación, descendente
+
+    res.status(200).json(legalBoundaries); // Enviar todos los deslindes legales como respuesta
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message }); // Manejar errores
   }
 };
 
 // Crear un nuevo deslinde legal
 exports.createLegalBoundary = async (req, res) => {
   try {
-    // Desactivar todos los deslindes vigentes
+    // Desactivar todos los deslindes legales vigentes
     await LegalBoundary.updateMany({ isCurrent: true }, { isCurrent: false });
 
-    // Crear el nuevo deslinde legal como vigente
+    // Crear la nueva versión como vigente
     const lastLegalBoundary = await LegalBoundary.findOne().sort({ version: -1 });
     const newVersion = lastLegalBoundary ? lastLegalBoundary.version + 1 : 1;
 
@@ -27,13 +29,13 @@ exports.createLegalBoundary = async (req, res) => {
       title: req.body.title,
       content: req.body.content,
       version: newVersion,
-      isCurrent: true, // Este es el nuevo deslinde vigente
+      isCurrent: true, // Este será el nuevo deslinde legal vigente
     });
 
     const savedLegalBoundary = await legalBoundary.save();
-    res.status(201).json(savedLegalBoundary);
+    res.status(201).json(savedLegalBoundary); // Enviar el deslinde legal guardado
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message }); // Manejar errores
   }
 };
 
@@ -42,9 +44,9 @@ exports.getLegalBoundaryById = async (req, res) => {
   try {
     const legalBoundary = await LegalBoundary.findById(req.params.id);
     if (!legalBoundary) return res.status(404).json({ message: 'Deslinde legal no encontrado' });
-    res.status(200).json(legalBoundary);
+    res.status(200).json(legalBoundary); // Enviar el deslinde legal encontrado
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message }); // Manejar errores
   }
 };
 
@@ -62,22 +64,22 @@ exports.updateLegalBoundary = async (req, res) => {
     const lastLegalBoundary = await LegalBoundary.findOne().sort({ version: -1 });
     const newVersion = lastLegalBoundary ? lastLegalBoundary.version + 1 : 1;
 
-    // Crear una nueva versión del deslinde
+    // Crear una nueva versión del deslinde legal
     const updatedLegalBoundary = new LegalBoundary({
       title: req.body.title || existingLegalBoundary.title,
       content: req.body.content || existingLegalBoundary.content,
       version: newVersion,
-      isCurrent: true,
+      isCurrent: true, // Marcar la nueva versión como vigente
     });
 
-    // Desactivar todos los deslindes vigentes
+    // Desactivar todos los deslindes legales vigentes
     await LegalBoundary.updateMany({ isCurrent: true }, { isCurrent: false });
 
     // Guardar la nueva versión
     const savedLegalBoundary = await updatedLegalBoundary.save();
-    res.status(200).json(savedLegalBoundary);
+    res.status(200).json(savedLegalBoundary); // Enviar el deslinde legal actualizado
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message }); // Manejar errores
   }
 };
 
@@ -90,7 +92,7 @@ exports.softDeleteLegalBoundary = async (req, res) => {
       return res.status(404).json({ message: 'Deslinde legal no encontrado' });
     }
 
-    legalBoundary.isDeleted = true; // Cambiar el estado a eliminado lógicamente
+    legalBoundary.isDeleted = true; // Cambiar el estado del deslinde legal a eliminado lógicamente
     await legalBoundary.save();
 
     res.status(200).json({ message: 'Deslinde legal eliminado lógicamente' });
@@ -105,8 +107,8 @@ exports.restoreLegalBoundary = async (req, res) => {
   try {
     const legalBoundary = await LegalBoundary.findByIdAndUpdate(req.params.id, { isDeleted: false }, { new: true });
     if (!legalBoundary) return res.status(404).json({ message: 'Deslinde legal no encontrado' });
-    res.status(200).json(legalBoundary);
+    res.status(200).json(legalBoundary); // Enviar el deslinde legal restaurado
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message }); // Manejar errores
   }
 };

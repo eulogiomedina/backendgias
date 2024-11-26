@@ -1,15 +1,17 @@
 const Term = require('../models/Term');
 const mongoose = require('mongoose');
 
-// Obtener todos los términos (excluyendo eliminados por defecto)
+// Obtener todos los términos (incluyendo eliminados)
 exports.getAllTerms = async (req, res) => {
   try {
-    const terms = await Term.find({ isDeleted: false })
-      .select('title content version isCurrent createdAt')
-      .sort({ createdAt: -1 });
-    res.status(200).json(terms);
+    // Obtiene todos los términos sin filtrar por isDeleted
+    const terms = await Term.find({})
+      .select('title content version isCurrent isDeleted createdAt')
+      .sort({ createdAt: -1 }); // Ordenar por fecha de creación, descendente
+
+    res.status(200).json(terms); // Enviar todos los términos como respuesta
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message }); // Manejar errores
   }
 };
 
@@ -27,7 +29,7 @@ exports.createTerm = async (req, res) => {
       title: req.body.title,
       content: req.body.content,
       version: newVersion,
-      isCurrent: true,
+      isCurrent: true, // Este será el nuevo término vigente
     });
 
     const savedTerm = await term.save();
@@ -90,7 +92,7 @@ exports.softDeleteTerm = async (req, res) => {
       return res.status(404).json({ message: 'Término no encontrado' });
     }
 
-    term.isDeleted = true; // Cambiar el estado a eliminado
+    term.isDeleted = true; // Cambiar el estado del término a eliminado lógicamente
     await term.save();
 
     res.status(200).json({ message: 'Término eliminado lógicamente' });
