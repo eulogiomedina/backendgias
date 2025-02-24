@@ -59,7 +59,12 @@ const contactRoute = require('./routes/contact');
 const socialLinksRoutes = require('./routes/socialLinks');
 const legalBoundaryRoute = require('./routes/legalBoundaryRoutes');
 const sloganRoutes = require('./routes/SloganRoutes');
-const logoRoutes = require('./routes/logoRoutes'); // Nueva ruta de logo  
+const logoRoutes = require('./routes/logoRoutes'); // Nueva ruta de logo 
+const chatbotRoutes = require('./routes/chatbot')
+const accountRoutes = require('./routes/accountRoutes');
+const nuevosAhorrosRoutes = require("./routes/nuevosAhorros");
+const ahorrosUsuariosRoutes = require("./routes/ahorrosUsuarios");
+const perfilRoutes= require('./routes/perfil');
 
 
 // Usar las rutas
@@ -81,6 +86,11 @@ app.use('/api', validateRoutes);
 app.use('/api', phoneRoutes);
 app.use('/api/cupomex', cupomexRoutes);
 app.use('/api/accounts', blockedAccountsRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/acc', accountRoutes);
+app.use("/api/nuevos-ahorros", nuevosAhorrosRoutes);
+app.use("/api/ahorros-usuarios", ahorrosUsuariosRoutes); 
+app.use("/api/perfil",perfilRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
@@ -96,6 +106,17 @@ app.post('/api/auth/logout', (req, res) => {
     res.clearCookie('connect.sid');
     res.status(200).send('Sesión cerrada correctamente');
   });
+});
+
+// Middleware para manejar errores globales
+app.use((err, req, res, next) => {
+  const statusCode = err.status || 500; // Captura el código de estado
+  res.status(statusCode).json({ errorCode: statusCode }); // Solo envía el código
+});
+
+// Middleware para manejar errores 404
+app.use((req, res) => {
+  res.status(404).json({ errorCode: 404 }); // Solo envía el código 404
 });
 
 // Escuchar en el puerto configurado

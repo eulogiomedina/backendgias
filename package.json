@@ -17,16 +17,19 @@
   "author": "Tu Nombre",
   "license": "ISC",
   "dependencies": {
+    "@google-cloud/dialogflow": "^6.14.0",
     "@sendinblue/client": "^3.3.1",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
     "cloudinary": "^1.41.3",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
+    "dialogflow": "^1.2.0",
     "dompurify": "^3.1.7",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "express-session": "^1.18.1",
     "express-validator": "^7.2.0",
     "joi": "^17.13.3",
@@ -36,7 +39,8 @@
     "multer-gridfs-storage": "^5.0.2",
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^3.0.3",
-    "nodemailer": "^6.9.15"
+    "nodemailer": "^6.9.15",
+    "tesseract.js": "^6.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
