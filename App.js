@@ -17,7 +17,7 @@ const app = express();
 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
+  origin: 'http://localhost:3000', // URL de tu frontend
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
@@ -66,6 +66,7 @@ const ahorrosUsuariosRoutes = require("./routes/ahorrosUsuarios");
 const perfilRoutes = require('./routes/perfil');
 const tandasRoutes = require("./routes/tandas");
 const pagosRoutes = require("./routes/pagos");
+const estadoRoutes = require('./routes/estados');
 
 // Usar las rutas
 app.use('/api/users', usersRoute);
@@ -93,6 +94,7 @@ app.use("/api/ahorros-usuarios", ahorrosUsuariosRoutes);
 app.use("/api/perfil", perfilRoutes);
 app.use("/api/tandas", tandasRoutes);
 app.use("/api/pagos", pagosRoutes);
+app.use('/api', estadoRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
