@@ -2,6 +2,12 @@ const dialogflow = require("@google-cloud/dialogflow");
 const axios = require("axios");
 require("dotenv").config();
 
+// ✅ Validar que las credenciales están definidas
+if (!process.env.DIALOGFLOW_PRIVATE_KEY || !process.env.DIALOGFLOW_CLIENT_EMAIL) {
+    console.error("❌ ERROR: Credenciales de Dialogflow no están configuradas correctamente.");
+    process.exit(1); // Termina la ejecución del servidor si no hay credenciales
+}
+
 // ✅ Cargar credenciales de Dialogflow desde .env
 const dialogflowConfig = {
     credentials: {
@@ -12,19 +18,21 @@ const dialogflowConfig = {
 };
 
 // ✅ Crear cliente de sesión de Dialogflow
-const sessionClient = new dialogflow.SessionsClient(dialogflowConfig);
+let sessionClient;
+try {
+    sessionClient = new dialogflow.SessionsClient(dialogflowConfig);
+} catch (error) {
+    console.error("❌ ERROR: No se pudo inicializar el cliente de Dialogflow:", error.message);
+    process.exit(1);
+}
 
-const projectId = process.env.DIALOGFLOW_PROJECT_ID; // ID de tu agente Dialogflow
 const conversationHistory = []; // Historial de conversación
-
-// 🔹 Verificar si la clave API de Gemini está cargando correctamente
-console.log("Clave API de Gemini:", process.env.GOOGLE_GEMINI_API_KEY ? "Cargada correctamente" : "No encontrada");
 
 const sendMessageToChatbot = async (req, res) => {
     const message = req.body.message;
     const sessionId = "12345"; // Se puede generar dinámicamente
 
-    const sessionPath = `projects/${projectId}/agent/sessions/${sessionId}`;
+    const sessionPath = `projects/${process.env.DIALOGFLOW_PROJECT_ID}/agent/sessions/${sessionId}`;
     const request = {
         session: sessionPath,
         queryInput: {
@@ -77,7 +85,7 @@ const sendMessageToChatbot = async (req, res) => {
         return res.json({ response: responseText });
 
     } catch (error) {
-        console.error("Error en la API de Gemini:", error.response?.data || error.message);
+        console.error("❌ ERROR en la API de Gemini o Dialogflow:", error.response?.data || error.message);
         return res.json({ response: "Lo siento, no puedo responder en este momento." });
     }
 };
