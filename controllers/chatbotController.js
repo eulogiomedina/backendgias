@@ -3,6 +3,9 @@ const axios = require("axios");
 const path = require("path");
 require("dotenv").config();
 
+// Verificar si la clave API de Gemini está cargando correctamente
+console.log("Clave API de Gemini:", process.env.GOOGLE_GEMINI_API_KEY ? "Cargada correctamente" : "No encontrada");
+
 const sessionClient = new dialogflow.SessionsClient({
     keyFilename: path.join(__dirname, "../config/dialogflow.json"),
 });
@@ -14,13 +17,13 @@ const sendMessageToChatbot = async (req, res) => {
     const message = req.body.message;
     const sessionId = "12345"; // Se puede generar dinámicamente
 
-    const sessionPath = sessionClient.projectAgentSessionPath(projectId, sessionId);
+    const sessionPath = `projects/${projectId}/agent/sessions/${sessionId}`;
     const request = {
         session: sessionPath,
         queryInput: {
             text: {
                 text: message,
-                languageCode: "es", // ✅ Se asegura de que Dialogflow procese en español
+                languageCode: "es", // ✅ Asegura que Dialogflow procese en español
             },
         },
     };
@@ -33,7 +36,7 @@ const sendMessageToChatbot = async (req, res) => {
         if (
             result.intent &&
             result.intent.displayName !== "Default Fallback Intent" &&
-            result.intentDetectionConfidence > 0.9 // 🔹 Se baja la confianza a 0.6 para mejorar coincidencias
+            result.intentDetectionConfidence > 0.9
         ) {
             return res.json({ response: result.fulfillmentText });
         }
@@ -42,14 +45,14 @@ const sendMessageToChatbot = async (req, res) => {
         conversationHistory.push({ role: "user", content: message });
 
         const geminiResponse = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`,
             {
                 contents: [
-                    { parts: [{ text: `Responde en español, sé preciso y claro. Pregunta del usuario: ${message}` }] } // 🔹 Se fuerza respuesta en español
+                    { parts: [{ text: `Responde en español, sé preciso y claro. Pregunta del usuario: ${message}` }] }
                 ],
                 generationConfig: {
-                    temperature: 0.2,  // 🔹 Se reduce creatividad para respuestas más precisas
-                    maxOutputTokens: 100,  // 🔹 Se limita la respuesta para evitar texto innecesario
+                    temperature: 0.2,
+                    maxOutputTokens: 100,
                     topP: 0.8,
                     topK: 30
                 }
@@ -67,6 +70,7 @@ const sendMessageToChatbot = async (req, res) => {
         return res.json({ response: responseText });
 
     } catch (error) {
+        console.error("Error en la API de Gemini:", error.response?.data || error.message);
         return res.json({ response: "Lo siento, no puedo responder en este momento." });
     }
 };

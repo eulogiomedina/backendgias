@@ -9,8 +9,7 @@ const protectedRoutes = require('./routes/protectedRoutes');
 const validateRoutes = require('./routes/validate');
 const phoneRoutes = require('./routes/validatePhone');
 const cupomexRoutes = require('./routes/cupomex');
-const blockedAccountsRoutes = require('./routes/blockedAccounts')
-
+const blockedAccountsRoutes = require('./routes/blockedAccounts');
 
 dotenv.config();
 
@@ -51,37 +50,38 @@ app.use(session({
 // Importar rutas
 const usersRoute = require('./routes/users');
 const authRoute = require('./routes/auth');
-const policyRoute = require('./routes/policyRoutes');  // Importar rutas de políticas
+const policyRoute = require('./routes/policyRoutes');  // Rutas de políticas
 const termsRoute = require('./routes/terms');
 const passwordResetRoutes = require('./routes/passwordReset');
-const auditRoute = require('./routes/audit'); // Importar rutas de auditoría
+const auditRoute = require('./routes/audit'); // Rutas de auditoría
 const contactRoute = require('./routes/contact');
 const socialLinksRoutes = require('./routes/socialLinks');
 const legalBoundaryRoute = require('./routes/legalBoundaryRoutes');
 const sloganRoutes = require('./routes/SloganRoutes');
-const logoRoutes = require('./routes/logoRoutes'); // Nueva ruta de logo 
-const chatbotRoutes = require('./routes/chatbot')
+const logoRoutes = require('./routes/logoRoutes'); // Ruta de logo
+const chatbotRoutes = require('./routes/chatbot');
 const accountRoutes = require('./routes/accountRoutes');
 const nuevosAhorrosRoutes = require("./routes/nuevosAhorros");
 const ahorrosUsuariosRoutes = require("./routes/ahorrosUsuarios");
-const perfilRoutes= require('./routes/perfil');
-
+const perfilRoutes = require('./routes/perfil');
+const tandasRoutes = require("./routes/tandas");
+const pagosRoutes = require("./routes/pagos");
 
 // Usar las rutas
 app.use('/api/users', usersRoute);
 app.use('/api/auth', authRoute);
-app.use('/api/policies', policyRoute);  // Usar rutas de políticas
+app.use('/api/policies', policyRoute);
 app.use('/api/terms', termsRoute);
 app.use('/api/password', passwordResetRoutes);
 app.use('/api/contact', contactRoute);
-//Rutas protegidas
+// Rutas protegidas
 app.use('/api', protectedRoutes);
-app.use('/api/audit', auditRoute); // Usar rutas de auditoría
-// Usar rutas de restablecimiento de contraseña
+app.use('/api/audit', auditRoute);
+// Rutas de restablecimiento de contraseña
 app.use('/api/social-links', socialLinksRoutes);
 app.use('/api/legal-boundaries', legalBoundaryRoute);
 app.use('/api/slogan', sloganRoutes);
-app.use('/api/logo', logoRoutes); // Usar la ruta de logo
+app.use('/api/logo', logoRoutes);
 app.use('/api', validateRoutes);
 app.use('/api', phoneRoutes);
 app.use('/api/cupomex', cupomexRoutes);
@@ -89,8 +89,10 @@ app.use('/api/accounts', blockedAccountsRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/acc', accountRoutes);
 app.use("/api/nuevos-ahorros", nuevosAhorrosRoutes);
-app.use("/api/ahorros-usuarios", ahorrosUsuariosRoutes); 
-app.use("/api/perfil",perfilRoutes);
+app.use("/api/ahorros-usuarios", ahorrosUsuariosRoutes);
+app.use("/api/perfil", perfilRoutes);
+app.use("/api/tandas", tandasRoutes);
+app.use("/api/pagos", pagosRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
@@ -110,13 +112,13 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Middleware para manejar errores globales
 app.use((err, req, res, next) => {
-  const statusCode = err.status || 500; // Captura el código de estado
-  res.status(statusCode).json({ errorCode: statusCode }); // Solo envía el código
+  const statusCode = err.status || 500;
+  res.status(statusCode).json({ errorCode: statusCode });
 });
 
 // Middleware para manejar errores 404
 app.use((req, res) => {
-  res.status(404).json({ errorCode: 404 }); // Solo envía el código 404
+  res.status(404).json({ errorCode: 404 });
 });
 
 // Escuchar en el puerto configurado
