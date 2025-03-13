@@ -1,17 +1,24 @@
 const dialogflow = require("@google-cloud/dialogflow");
 const axios = require("axios");
-const path = require("path");
 require("dotenv").config();
 
-// Verificar si la clave API de Gemini está cargando correctamente
-console.log("Clave API de Gemini:", process.env.GOOGLE_GEMINI_API_KEY ? "Cargada correctamente" : "No encontrada");
+// ✅ Cargar credenciales de Dialogflow desde .env
+const dialogflowConfig = {
+    credentials: {
+        private_key: process.env.DIALOGFLOW_PRIVATE_KEY.replace(/\\n/g, "\n"),
+        client_email: process.env.DIALOGFLOW_CLIENT_EMAIL
+    },
+    projectId: process.env.DIALOGFLOW_PROJECT_ID
+};
 
-const sessionClient = new dialogflow.SessionsClient({
-    keyFilename: path.join(__dirname, "../config/dialogflow.json"),
-});
+// ✅ Crear cliente de sesión de Dialogflow
+const sessionClient = new dialogflow.SessionsClient(dialogflowConfig);
 
-const projectId = "chatbotgias-kx9y"; // ID de tu agente Dialogflow
+const projectId = process.env.DIALOGFLOW_PROJECT_ID; // ID de tu agente Dialogflow
 const conversationHistory = []; // Historial de conversación
+
+// 🔹 Verificar si la clave API de Gemini está cargando correctamente
+console.log("Clave API de Gemini:", process.env.GOOGLE_GEMINI_API_KEY ? "Cargada correctamente" : "No encontrada");
 
 const sendMessageToChatbot = async (req, res) => {
     const message = req.body.message;
