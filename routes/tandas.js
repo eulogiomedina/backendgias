@@ -14,30 +14,44 @@ router.post("/", async (req, res) => {
     }
 
     const userObjectId = new mongoose.Types.ObjectId(userId);
-
     let tanda = await Tanda.findOne({ monto, tipo, iniciada: false });
 
     if (tanda && tanda.participantes.length < tanda.totalCiclos) {
       if (tanda.participantes.some(p => p.userId.equals(userObjectId))) {
         return res.status(400).json({ message: "El usuario ya está en esta tanda." });
       }
+
+      // Agregar nuevo participante
       tanda.participantes.push({ userId: userObjectId, orden: tanda.participantes.length + 1 });
+
+      // 🔥 Recalcular fechas de pago
+      tanda = await actualizarFechasPago(tanda);
+
       await tanda.save();
       return res.json({ message: "Te uniste a la tanda exitosamente.", tanda });
-    } else {
-      tanda = new Tanda({ 
+    } 
+    
+    // Si no existe la tanda, crearla y calcular fechas
+    else {
+      const nuevaTanda = new Tanda({ 
         monto, 
         tipo, 
-        participantes: [{ userId: userObjectId, orden: 1 }] 
+        participantes: [{ userId: userObjectId, orden: 1 }],
+        fechaInicio: new Date()
       });
-      await tanda.save();
-      return res.json({ message: "Tanda creada exitosamente.", tanda });
+
+      // 🔥 Recalcular fechas de pago para la nueva tanda
+      const tandaConFechas = await actualizarFechasPago(nuevaTanda);
+
+      await tandaConFechas.save();
+      return res.json({ message: "Tanda creada exitosamente.", tanda: tandaConFechas });
     }
   } catch (error) {
     console.error("❌ ERROR DETECTADO EN POST /api/tandas:", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 });
+
 
 // 📌 Iniciar tanda manualmente
 router.patch("/:tandaId/iniciar", async (req, res) => {
@@ -55,6 +69,41 @@ router.patch("/:tandaId/iniciar", async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error });
   }
 });
+
+async function actualizarFechasPago(tanda) {
+  if (!tanda.fechaInicio) {
+    tanda.fechaInicio = new Date();
+  }
+
+  let fechaBase = new Date(tanda.fechaInicio);
+  let intervalo = { Semanal: 7, Quincenal: 14, Mensual: 30 }[tanda.tipo] || 7;
+  let totalParticipantes = tanda.participantes.length;
+
+  let fechasPago = [];
+
+  for (let ciclo = 0; ciclo < totalParticipantes; ciclo++) {
+    let fechaPago = new Date(fechaBase);
+    fechaPago.setUTCDate(fechaPago.getUTCDate() + (ciclo * intervalo));
+
+    let fechaRecibo = new Date(fechaPago);
+    fechaRecibo.setUTCDate(fechaPago.getUTCDate() + 1);
+
+    tanda.participantes.forEach((participante, index) => {
+      let fechaPagoFinal = index === ciclo ? null : fechaPago.toISOString();
+      let fechaReciboFinal = index === ciclo ? fechaRecibo.toISOString() : null;
+
+      fechasPago.push({
+        userId: participante.userId,
+        fechaPago: fechaPagoFinal,
+        fechaRecibo: fechaReciboFinal,
+      });
+    });
+  }
+
+  tanda.fechasPago = fechasPago;
+  return tanda;
+}
+
 
 // 📌 Registrar pago de un usuario
 router.post("/:tandaId/pagar", async (req, res) => {

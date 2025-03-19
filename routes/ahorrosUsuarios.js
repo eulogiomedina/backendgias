@@ -25,10 +25,6 @@ const upload = multer({ storage: storage });
 // ==================== POST / (Registrar un ahorro) ====================
 router.post("/", upload.single("credencial"), async (req, res) => {
   try {
-    console.log("📌 [POST] /api/ahorros-usuarios - Iniciando proceso...");
-    
-    console.log("📌 Datos recibidos en `req.body`:", req.body);
-    console.log("📌 Archivo recibido en `req.file`:", req.file);
 
     const { userId, monto, tipo, facebook } = req.body;
 
@@ -44,7 +40,6 @@ router.post("/", upload.single("credencial"), async (req, res) => {
     let facebookValue = "";
 
     if (ahorroUsuario) {
-      console.log("📌 Usuario encontrado, actualizando ahorro...");
       credencialUrl = ahorroUsuario.ahorros[0].credencial;
       facebookValue = ahorroUsuario.ahorros[0].facebook;
       const nuevoOrden = ahorroUsuario.ahorros.length + 1;
@@ -59,19 +54,15 @@ router.post("/", upload.single("credencial"), async (req, res) => {
 
       ahorroUsuario.ahorros.push(nuevoAhorro);
       await ahorroUsuario.save();
-      console.log("✅ Ahorro actualizado correctamente.");
       return res.json({ message: "Ahorro guardado exitosamente.", ahorro: nuevoAhorro });
     } else {
-      console.log("📌 Nuevo usuario detectado, creando primer ahorro...");
       
       if (!req.file) {
         console.error("🚨 Error: No se recibió imagen de credencial.");
         return res.status(400).json({ message: "Debes subir una imagen de tu credencial." });
       }
 
-      console.log("📌 Subiendo imagen a Cloudinary...");
       const uploadResult = await cloudinary.uploader.upload(req.file.path);
-      console.log("📌 Imagen subida con éxito:", uploadResult.secure_url);
       
       credencialUrl = uploadResult.secure_url;
       facebookValue = facebook;
@@ -91,7 +82,6 @@ router.post("/", upload.single("credencial"), async (req, res) => {
       });
 
       await ahorroUsuario.save();
-      console.log("✅ Ahorro guardado exitosamente.");
       return res.json({ message: "Ahorro guardado exitosamente.", ahorro: nuevoAhorro });
     }
   } catch (error) {
