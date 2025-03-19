@@ -25,8 +25,15 @@ const upload = multer({ storage: storage });
 // ==================== POST / (Registrar un ahorro) ====================
 router.post("/", upload.single("credencial"), async (req, res) => {
   try {
+    console.log("📌 [POST] /api/ahorros-usuarios - Iniciando proceso...");
+    
+    console.log("📌 Datos recibidos en `req.body`:", req.body);
+    console.log("📌 Archivo recibido en `req.file`:", req.file);
+
     const { userId, monto, tipo, facebook } = req.body;
+
     if (!userId || !monto || !tipo) {
+      console.error("🚨 Error: Faltan datos obligatorios.");
       return res.status(400).json({ message: "Faltan datos obligatorios." });
     }
 
@@ -37,12 +44,10 @@ router.post("/", upload.single("credencial"), async (req, res) => {
     let facebookValue = "";
 
     if (ahorroUsuario) {
-      // Si ya existe, reutilizamos la credencial y facebook del primer ahorro
+      console.log("📌 Usuario encontrado, actualizando ahorro...");
       credencialUrl = ahorroUsuario.ahorros[0].credencial;
       facebookValue = ahorroUsuario.ahorros[0].facebook;
-      // Para la nueva entrada, asignar el orden siguiente
       const nuevoOrden = ahorroUsuario.ahorros.length + 1;
-      // Crear el objeto ahorro con el orden calculado
       const nuevoAhorro = {
         monto,
         tipo,
@@ -54,26 +59,23 @@ router.post("/", upload.single("credencial"), async (req, res) => {
 
       ahorroUsuario.ahorros.push(nuevoAhorro);
       await ahorroUsuario.save();
+      console.log("✅ Ahorro actualizado correctamente.");
       return res.json({ message: "Ahorro guardado exitosamente.", ahorro: nuevoAhorro });
     } else {
-      // Si es el primer ahorro, se requiere la imagen y el facebook
+      console.log("📌 Nuevo usuario detectado, creando primer ahorro...");
+      
       if (!req.file) {
+        console.error("🚨 Error: No se recibió imagen de credencial.");
         return res.status(400).json({ message: "Debes subir una imagen de tu credencial." });
       }
-      // Subir imagen a Cloudinary
-      const uploadResult = await cloudinary.uploader.upload(req.file.path);
-      credencialUrl = uploadResult.secure_url;
 
-      // Procesar OCR con Tesseract.js para validar la credencial
-      const ocrResult = await Tesseract.recognize(credencialUrl, "spa");
-      const detectedText = ocrResult.data.text;
-      const palabrasClave = ["Instituto Nacional Electoral", "CURP", "Clave de Elector", "Nombre"];
-      const esCredencial = palabrasClave.some((palabra) => detectedText.includes(palabra));
-      if (!esCredencial) {
-        return res.status(400).json({ message: "La imagen subida no parece ser una credencial de lector." });
-      }
+      console.log("📌 Subiendo imagen a Cloudinary...");
+      const uploadResult = await cloudinary.uploader.upload(req.file.path);
+      console.log("📌 Imagen subida con éxito:", uploadResult.secure_url);
+      
+      credencialUrl = uploadResult.secure_url;
       facebookValue = facebook;
-      // Para el primer ahorro, el orden es 1
+
       const nuevoAhorro = {
         monto,
         tipo,
@@ -87,14 +89,17 @@ router.post("/", upload.single("credencial"), async (req, res) => {
         userId,
         ahorros: [nuevoAhorro],
       });
+
       await ahorroUsuario.save();
+      console.log("✅ Ahorro guardado exitosamente.");
       return res.json({ message: "Ahorro guardado exitosamente.", ahorro: nuevoAhorro });
     }
   } catch (error) {
     console.error("❌ Error en el servidor:", error);
-    res.status(500).json({ message: "Error en el servidor", error });
+    res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 });
+
 
 // ==================== GET /:userId (Obtener todos los ahorros del usuario) ====================
 router.get("/:userId", async (req, res) => {
