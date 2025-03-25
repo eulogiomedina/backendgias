@@ -70,6 +70,27 @@ router.patch("/:tandaId/iniciar", async (req, res) => {
   }
 });
 
+// 📌 Obtener todas las tandas en las que un usuario participa
+router.get("/gestion-cuenta-all/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    // Buscar todas las tandas donde el usuario sea un participante
+    const tandas = await Tanda.find({ "participantes.userId": userObjectId })
+      .populate("participantes.userId", "nombre apellidos correo telefono");
+
+    if (!tandas || tandas.length === 0) {
+      return res.status(404).json({ message: "No se encontraron tandas para este usuario." });
+    }
+
+    res.json(tandas);
+  } catch (error) {
+    console.error("❌ Error en GET /api/tandas/gestion-cuenta-all/:userId:", error);
+    res.status(500).json({ message: "Error en el servidor", error: error.message });
+  }
+});
+
 async function actualizarFechasPago(tanda) {
   if (!tanda.fechaInicio) {
     tanda.fechaInicio = new Date();

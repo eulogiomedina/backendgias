@@ -67,6 +67,7 @@ const perfilRoutes = require('./routes/perfil');
 const tandasRoutes = require("./routes/tandas");
 const pagosRoutes = require("./routes/pagos");
 const estadoRoutes = require('./routes/estados');
+const cuentaDestinoRoutes = require("./routes/cuentaDestino");
 
 // Usar las rutas
 app.use('/api/users', usersRoute);
@@ -95,6 +96,7 @@ app.use("/api/perfil", perfilRoutes);
 app.use("/api/tandas", tandasRoutes);
 app.use("/api/pagos", pagosRoutes);
 app.use('/api', estadoRoutes);
+app.use("/api/cuenta-destino", cuentaDestinoRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
