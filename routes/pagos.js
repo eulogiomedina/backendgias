@@ -286,4 +286,55 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
+// 📌 OBTENER TODOS LOS PAGOS (para el panel de administración)
+router.get("/", async (req, res) => {
+  try {
+    const pagos = await Pago.find()
+      .populate("userId", "nombre correo") // ✅ Para que puedas mostrar nombre en el frontend
+      .populate("tandaId", "monto tipo");
+
+    res.json(pagos);
+  } catch (error) {
+    console.error("❌ Error al obtener todos los pagos:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
+// 📌 Aprobar un pago manualmente
+router.patch("/:pagoId/aprobar", async (req, res) => {
+  try {
+    const { pagoId } = req.params;
+    const pago = await Pago.findByIdAndUpdate(
+      pagoId,
+      { estado: "Aprobado" },
+      { new: true }
+    );
+    if (!pago) return res.status(404).json({ message: "Pago no encontrado." });
+
+    res.json({ message: "Pago aprobado correctamente.", pago });
+  } catch (error) {
+    console.error("❌ Error al aprobar pago:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
+// 📌 Rechazar un pago manualmente
+router.patch("/:pagoId/rechazar", async (req, res) => {
+  try {
+    const { pagoId } = req.params;
+    const pago = await Pago.findByIdAndUpdate(
+      pagoId,
+      { estado: "Rechazado" },
+      { new: true }
+    );
+    if (!pago) return res.status(404).json({ message: "Pago no encontrado." });
+
+    res.json({ message: "Pago rechazado correctamente.", pago });
+  } catch (error) {
+    console.error("❌ Error al rechazar pago:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
+
 module.exports = router;
