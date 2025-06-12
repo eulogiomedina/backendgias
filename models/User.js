@@ -24,6 +24,9 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'admin', 'empleado'], default: 'user' }, // Roles: 'user' o 'admin'
   resetPasswordToken: { type: String }, // Token para restablecer la contraseña
   resetPasswordExpires: { type: Date }, // Expiración del token de restablecimiento de contraseña
+    // CAMPOS PARA WEAR OS
+  tokenWearOS: { type: String, default: null },          // Token de 5 dígitos
+  tokenWearOSActivo: { type: Boolean, default: false },  // Saber si está activo para recibir notificaciones
 });
 
 // Máximo de intentos fallidos y tiempo de bloqueo
@@ -121,6 +124,9 @@ userSchema.methods.isPasswordUsed = async function (newPassword) {
 
   return isUsed.includes(true);
 };
+
+
+
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
