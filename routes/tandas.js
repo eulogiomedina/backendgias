@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const express = require("express");
 const router = express.Router();
 const Tanda = require("../models/Tanda");
+const { enviarRecordatorioPago } = require("../utils/emailService");
+
 
 // 📌 Crear o unirse a una tanda con validaciones corregidas
 router.post("/", async (req, res) => {
@@ -206,6 +208,7 @@ router.patch("/:tandaId/definir-fecha", async (req, res) => {
     let fechaBase = new Date(fechaInicio);
     fechaBase.setUTCHours(0, 0, 0, 0); // Asegurar que se guarde en UTC
     tanda.fechaInicio = fechaBase;
+    tanda.estado = 'Activa';  // ✅ Marcar la tanda como activa al definir la fecha
 
     let intervalo = { Semanal: 7, Quincenal: 14, Mensual: 30 }[tanda.tipo] || 7;
     let totalParticipantes = tanda.participantes.length;
@@ -237,6 +240,26 @@ router.patch("/:tandaId/definir-fecha", async (req, res) => {
     tanda.fechasPago = fechasPago;
     await tanda.save();
 
+    console.log("📌 Fechas de pago generadas correctamente en UTC:", tanda.fechasPago);
+
+    // 🔥 Enviar notificación a cada participante
+    for (const participante of tanda.participantes) {
+      const usuario = participante.userId;
+      
+      const fechaPagoUsuario = tanda.fechasPago.find(fp => fp.userId.toString() === usuario._id.toString() && fp.fechaPago !== null);
+
+      if (fechaPagoUsuario) {
+        try {
+          await enviarRecordatorioPago(usuario, tanda, new Date(fechaPagoUsuario.fechaPago));
+        } catch (err) {
+          console.error(`❌ Error al enviar recordatorio a ${usuario.correo}:`, err);
+        }
+      } else {
+        console.log(`⚠️ No se encontró fecha de pago para el usuario ${usuario.correo}, no se envía correo.`);
+      }
+    }
+
+   
     console.log("📌 Fechas de pago generadas correctamente en UTC:", tanda.fechasPago);
     res.json({ message: "Fecha de inicio definida y fechas de pago generadas correctamente.", tanda });
   } catch (error) {

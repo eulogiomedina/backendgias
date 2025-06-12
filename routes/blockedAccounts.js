@@ -14,4 +14,14 @@ router.get('/blocked', async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    const blockedAccounts = await BlockedAccount.find().select('correo fechaBloqueo');
+    res.status(200).json(blockedAccounts);
+  } catch (error) {
+    console.error('Error al obtener las cuentas bloqueadas:', error);
+    res.status(500).json({ error: 'Error al obtener las cuentas bloqueadas' });
+  }
+});
+
 module.exports = router;

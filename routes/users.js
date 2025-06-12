@@ -83,4 +83,16 @@ router.get('/verify/:token', async (req, res) => {
   }
 });
 
+// Ruta para obtener todos los usuarios
+router.get('/', async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ message: 'Error al obtener usuarios' });
+  }
+});
+
+
 module.exports = router;

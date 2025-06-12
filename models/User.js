@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
   isVerified: { type: Boolean, default: false }, // Estado de verificación de correo
   verificationToken: { type: String }, // Token de verificación de correo
   verificationTokenExpires: { type: Date }, // Fecha de expiración del token de verificación
-  role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Roles: 'user' o 'admin'
+  role: { type: String, enum: ['user', 'admin', 'empleado'], default: 'user' }, // Roles: 'user' o 'admin'
   resetPasswordToken: { type: String }, // Token para restablecer la contraseña
   resetPasswordExpires: { type: Date }, // Expiración del token de restablecimiento de contraseña
 });

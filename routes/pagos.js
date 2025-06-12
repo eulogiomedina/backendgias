@@ -3,10 +3,12 @@ const router = express.Router();
 const Pago = require("../models/Pago");
 const CuentaDestino = require("../models/CuentaDestino");
 const Tanda = require("../models/Tanda");
+const User = require("../models/User");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const Tesseract = require("tesseract.js");
+const { enviarNotificacionEstadoPago, enviarNotificacionAtraso } = require("../utils/emailService");
 
 // 📦 Configuración de Cloudinary
 cloudinary.config({
@@ -258,6 +260,17 @@ router.post("/", upload.single("comprobante"), async (req, res) => {
     });
 
     await nuevoPago.save();
+
+    // Obtener información del usuario para el correo
+    const usuario = await User.findById(userId);
+    
+    // Enviar notificación por correo
+    await enviarNotificacionEstadoPago(usuario, nuevoPago, tanda);
+    
+    // Si el pago está atrasado, enviar notificación adicional
+    if (estaAtrasado) {
+      await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
+    }
 
     res.json({
       message: resultadoOCR.mensaje,

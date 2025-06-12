@@ -17,7 +17,7 @@ const app = express();
 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
+  origin: 'http://localhost:3000', // URL de tu frontend
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
