@@ -71,7 +71,7 @@ router.get('/notificaciones/:userId', async (req, res) => {
     const userId = new mongoose.Types.ObjectId(req.params.userId); // 🔧 conversión
     const notificaciones = await NotificacionWearOS.find({
       userId,
-      leido: false
+      leida: false
     }).sort({ fecha: -1 });
 
     res.json(notificaciones);
@@ -89,7 +89,7 @@ router.put('/notificaciones/:id/leido', async (req, res) => {
   try {
     const notificacion = await NotificacionWearOS.findByIdAndUpdate(
       req.params.id,
-      { leido: true },
+      { leida: true },
       { new: true }
     );
 
