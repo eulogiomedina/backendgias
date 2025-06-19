@@ -268,9 +268,10 @@ router.post("/", upload.single("comprobante"), async (req, res) => {
     await enviarNotificacionEstadoPago(usuario, nuevoPago, tanda);
     
     // Si el pago está atrasado, enviar notificación adicional
-    if (estaAtrasado) {
-      await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
-    }
+    if (nuevoPago.conPenalizacion) {
+  await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
+}
+
 
     res.json({
       message: resultadoOCR.mensaje,

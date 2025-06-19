@@ -59,7 +59,12 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     'Rechazado': 'ha sido rechazado'
   };
 
-  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0, 10);
+  let fechaPagoFormateada = "N/A";
+  try {
+    fechaPagoFormateada = pago.fechaPago?.toISOString()?.substring(0, 10) || "N/A";
+  } catch (e) {
+    console.warn("⚠️ No se pudo formatear fechaPago");
+  }
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -67,7 +72,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     subject: `Estado de Pago - ${pago.estado}`,
     html: `
       <h2>Hola ${usuario.nombre},</h2>
-      <p>Tu pago por $${pago.monto} ${estadoTexto[pago.estado]}.</p>
+      <p>Tu pago por $${pago.monto} ${estadoTexto[pago.estado] || "tiene un estado desconocido"}.</p>
       <p>Detalles del pago:</p>
       <ul>
         <li>Fecha de pago: ${fechaPagoFormateada}</li>
@@ -80,13 +85,14 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
 
   try {
     console.log(`📧 Enviando notificación de estado a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
+
     const info = await transporter.sendMail(mailOptions);
 
     await NotificacionWearOS.create({
       userId: usuario._id,
       tipo: 'EstadoPago',
       titulo: `Estado de tu pago: ${pago.estado}`,
-      mensaje: `Tu pago por $${pago.monto} ${estadoTexto[pago.estado]}. Tipo: ${tanda.tipo}. ${pago.atraso ? '⚠️ Pago con atraso.' : ''}`
+      mensaje: `Tu pago por $${pago.monto} ${estadoTexto[pago.estado] || ""}. Tipo: ${tanda.tipo}. ${pago.atraso ? '⚠️ Pago con atraso.' : ''}`
     });
 
     return info;
@@ -95,6 +101,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     throw error;
   }
 };
+
 
 // Función para enviar notificación de atraso
 const enviarNotificacionAtraso = async (usuario, pago, tanda) => {
