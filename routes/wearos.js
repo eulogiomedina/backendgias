@@ -7,10 +7,10 @@ const NotificacionWearOS = require('../models/NotificacionWearOS');
 const generarToken = () => Math.floor(10000 + Math.random() * 90000).toString();
 
 /**
- * Ruta: POST /api/wearos/generar-token/:userId
+ * POST /generar-token/:userId
  * Descripción: Genera un token de 5 dígitos y lo guarda en el usuario.
  */
-router.post('/api/wearos/generar-token/:userId', async (req, res) => {
+router.post('/generar-token/:userId', async (req, res) => {
   try {
     const token = generarToken();
 
@@ -37,10 +37,10 @@ router.post('/api/wearos/generar-token/:userId', async (req, res) => {
 });
 
 /**
- * Ruta: POST /api/wearos/validar-token
+ * POST /validar-token
  * Descripción: Valida el token enviado desde la app Wear OS.
  */
-router.post('/api/wearos/validar-token', async (req, res) => {
+router.post('/validar-token', async (req, res) => {
   const { token } = req.body;
 
   console.log(`🔍 Token recibido: [${token}]`);
@@ -62,10 +62,10 @@ router.post('/api/wearos/validar-token', async (req, res) => {
 });
 
 /**
- * Ruta: GET /api/wearos/notificaciones/:userId
+ * GET /notificaciones/:userId
  * Descripción: Devuelve las notificaciones NO leídas del usuario
  */
-router.get('/api/wearos/notificaciones/:userId', async (req, res) => {
+router.get('/notificaciones/:userId', async (req, res) => {
   try {
     const notificaciones = await NotificacionWearOS.find({
       userId: req.params.userId,
@@ -80,10 +80,10 @@ router.get('/api/wearos/notificaciones/:userId', async (req, res) => {
 });
 
 /**
- * Ruta: PUT /api/wearos/notificaciones/:id/leido
+ * PUT /notificaciones/:id/leido
  * Descripción: Marca una notificación como leída
  */
-router.put('/api/wearos/notificaciones/:id/leido', async (req, res) => {
+router.put('/notificaciones/:id/leido', async (req, res) => {
   try {
     const notificacion = await NotificacionWearOS.findByIdAndUpdate(
       req.params.id,
