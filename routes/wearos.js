@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const NotificacionWearOS = require('../models/NotificacionWearOS');
+const mongoose = require('mongoose');
 
 // 👉 Función para generar un token de 5 dígitos aleatorio
 const generarToken = () => Math.floor(10000 + Math.random() * 90000).toString();
@@ -67,8 +68,9 @@ router.post('/validar-token', async (req, res) => {
  */
 router.get('/notificaciones/:userId', async (req, res) => {
   try {
+    const userId = new mongoose.Types.ObjectId(req.params.userId); // 🔧 conversión
     const notificaciones = await NotificacionWearOS.find({
-      userId: req.params.userId,
+      userId,
       leido: false
     }).sort({ fecha: -1 });
 
