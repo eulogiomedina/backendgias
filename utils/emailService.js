@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
+const NotificacionWearOS = require('../models/NotificacionWearOS');
 
 dotenv.config();
 
@@ -14,7 +15,7 @@ const transporter = nodemailer.createTransport({
 
 // Función para enviar correo de recordatorio de pago
 const enviarRecordatorioPago = async (usuario, tanda, fechaProximoPago) => {
-  const fechaFormateada = fechaProximoPago.toISOString().substring(0,10);
+  const fechaFormateada = fechaProximoPago.toISOString().substring(0, 10);
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -35,7 +36,14 @@ const enviarRecordatorioPago = async (usuario, tanda, fechaProximoPago) => {
   try {
     console.log(`📧 Enviando recordatorio a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.response);
+
+    await NotificacionWearOS.create({
+      userId: usuario._id,
+      tipo: 'RecordatorioPago',
+      titulo: 'Recordatorio de Pago',
+      mensaje: `Tu próximo pago está programado para el ${fechaFormateada}. Monto: $${tanda.monto}. Tipo: ${tanda.tipo}.`
+    });
+
     return info;
   } catch (error) {
     console.error('❌ Error al enviar correo de recordatorio:', error);
@@ -51,7 +59,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     'Rechazado': 'ha sido rechazado'
   };
 
-  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0,10);
+  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0, 10);
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -73,7 +81,14 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
   try {
     console.log(`📧 Enviando notificación de estado a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.response);
+
+    await NotificacionWearOS.create({
+      userId: usuario._id,
+      tipo: 'EstadoPago',
+      titulo: `Estado de tu pago: ${pago.estado}`,
+      mensaje: `Tu pago por $${pago.monto} ${estadoTexto[pago.estado]}. Tipo: ${tanda.tipo}. ${pago.atraso ? '⚠️ Pago con atraso.' : ''}`
+    });
+
     return info;
   } catch (error) {
     console.error('❌ Error al enviar notificación de estado:', error);
@@ -83,7 +98,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
 
 // Función para enviar notificación de atraso
 const enviarNotificacionAtraso = async (usuario, pago, tanda) => {
-  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0,10);
+  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0, 10);
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -104,7 +119,14 @@ const enviarNotificacionAtraso = async (usuario, pago, tanda) => {
   try {
     console.log(`📧 Enviando notificación de atraso a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
     const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.response);
+
+    await NotificacionWearOS.create({
+      userId: usuario._id,
+      tipo: 'AtrasoPago',
+      titulo: 'Aviso de Pago Atrasado',
+      mensaje: `Tu pago de $${pago.monto} de la tanda tipo ${tanda.tipo} está atrasado. Fecha original: ${fechaPagoFormateada}.`
+    });
+
     return info;
   } catch (error) {
     console.error('❌ Error al enviar notificación de atraso:', error);
@@ -117,3 +139,4 @@ module.exports = {
   enviarNotificacionEstadoPago,
   enviarNotificacionAtraso
 };
+// Este módulo maneja el envío de correos electrónicos y notificaciones para recordatorios de pagos, estados de pago y atrasos.
