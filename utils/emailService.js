@@ -91,7 +91,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     await NotificacionWearOS.create({
       userId: usuario._id,
       tipo: 'EstadoPago',
-      titulo: `Estado de tu pago: ${pago.estado}`,
+      titulo: `Estado ${pago.estado}`,
       mensaje: `Tu pago por $${pago.monto} ${estadoTexto[pago.estado] || ""}. Tipo: ${tanda.tipo}. ${pago.atraso ? '⚠️ Pago con atraso.' : ''}`
     });
 
