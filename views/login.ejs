@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Vincular Cuenta GIAS</title>
+  <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+</head>
+<body class="flex items-center justify-center h-screen bg-gray-100">
+  <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 w-full max-w-md">
+    <h2 class="text-2xl mb-4 text-center font-bold text-blue-700">Vincular Cuenta GIAS</h2>
+    <% if (error) { %>
+      <p class="text-red-600 mb-4"><%= error %></p>
+    <% } %>
+
+    <form action="/oauth/auth" method="POST">
+      <div class="mb-4">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Correo</label>
+        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+               type="email" name="correo" placeholder="Correo" required />
+      </div>
+      <div class="mb-6">
+        <label class="block text-gray-700 text-sm font-bold mb-2">Contraseña</label>
+        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+               type="password" name="password" placeholder="Contraseña" required />
+      </div>
+
+      <!-- Campos ocultos -->
+      <input type="hidden" name="state" value="<%= state %>">
+      <input type="hidden" name="redirect_uri" value="<%= redirect_uri %>">
+
+      <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full"
+              type="submit">Vincular Cuenta</button>
+    </form>
+  </div>
+</body>
+</html>

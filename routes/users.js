@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const router = express.Router();
-
+const Token = require('../models/Token');
 // Ruta para registrar usuario
 router.post('/register', async (req, res) => {
   const { nombre, apellidos, correo, password, telefono, estado, municipio, colonia } = req.body;
@@ -91,6 +91,42 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
     res.status(500).json({ message: 'Error al obtener usuarios' });
+  }
+});
+
+// ✅ NUEVA: Obtener datos del usuario logueado
+// ------------------------
+router.get('/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ message: 'Falta access token' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const tokenDoc = await Token.findOne({ accessToken: token });
+
+    if (!tokenDoc) {
+      return res.status(401).json({ message: 'Token inválido o expirado' });
+    }
+
+    const user = await User.findById(tokenDoc.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    res.json({
+      nombre: user.nombre,
+      correo: user.correo,
+      telefono: user.telefono,
+      direccion: user.direccion
+    });
+  } catch (error) {
+    console.error('Error al obtener usuario:', error);
+    res.status(500).json({ message: 'Error del servidor' });
   }
 });
 

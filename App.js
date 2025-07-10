@@ -69,6 +69,7 @@ const pagosRoutes = require("./routes/pagos");
 const estadoRoutes = require('./routes/estados');
 const cuentaDestinoRoutes = require("./routes/cuentaDestino");
 const wearosRoutes = require('./routes/wearos');
+const oauthRoutes = require('./routes/oauth');//alexa
 
 // Usar las rutas
 app.use('/api/users', usersRoute);
@@ -99,6 +100,7 @@ app.use("/api/pagos", pagosRoutes);
 app.use('/api', estadoRoutes);
 app.use("/api/cuenta-destino", cuentaDestinoRoutes);
 app.use('/api/wearos', wearosRoutes);
+app.use('/oauth', oauthRoutes);//alexa
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
@@ -132,3 +134,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
+// Configurar EJS como motor de plantillas alexas
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));

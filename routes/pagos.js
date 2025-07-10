@@ -350,5 +350,44 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
   }
 });
 
+const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware'); // Asegúrate de importarlo
+
+// ✅ Ruta corregida: obtiene la próxima fecha de pago del usuario usando access_token
+router.get('/proxima-fecha', verifyAccessToken, async (req, res) => {
+  const userId = req.userId; // Ya viene del token verificado
+
+  try {
+    // Busca todas las tandas donde el userId esté en fechasPago
+    const tandas = await Tanda.find({ 'fechasPago.userId': userId });
+
+    let fechasPendientes = [];
+    tandas.forEach(tanda => {
+      const pendientes = tanda.fechasPago.filter(f =>
+        f.userId.toString() === userId && f.fechaPago
+      );
+      fechasPendientes.push(...pendientes);
+    });
+
+    // Excluir pagos ya realizados
+    const historialPagos = await Pago.find({ userId });
+    fechasPendientes = fechasPendientes.filter(f =>
+      !historialPagos.some(h =>
+        h.fechaPago &&
+        new Date(h.fechaPago).getTime() === new Date(f.fechaPago).getTime()
+      )
+    );
+
+    fechasPendientes.sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago));
+
+    if (fechasPendientes.length === 0) {
+      return res.status(404).json({ message: 'No hay fechas pendientes.' });
+    }
+
+    res.json({ proximaFechaPago: fechasPendientes[0].fechaPago });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al buscar próxima fecha de pago' });
+  }
+});
 
 module.exports = router;
