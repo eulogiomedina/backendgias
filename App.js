@@ -10,6 +10,8 @@ const validateRoutes = require('./routes/validate');
 const phoneRoutes = require('./routes/validatePhone');
 const cupomexRoutes = require('./routes/cupomex');
 const blockedAccountsRoutes = require('./routes/blockedAccounts');
+const path = require('path');
+
 
 dotenv.config();
 
