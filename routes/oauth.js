@@ -6,10 +6,10 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const Token = require('../models/Token');  // 👈 Asegúrate de importar Token aquí
+const Token = require('../models/Token');  
 const crypto = require('crypto');
 
-// ⚠️ Solo para DEMO: usa Redis o base de datos en producción
+
 const authCodes = {};
 
 //-------------------------------------
@@ -54,10 +54,8 @@ router.post('/auth', async (req, res) => {
   }
 });
 
-//-------------------------------------
-// 👉 3) POST /oauth/token
-//-------------------------------------
-router.post('/token', async (req, res) => {   // 👈 Asegúrate de poner async aquí
+
+router.post('/token', async (req, res) => {   
   const { grant_type, code, client_id, client_secret } = req.body;
 
   console.log('TOKEN REQUEST:', req.body);
@@ -83,7 +81,7 @@ router.post('/token', async (req, res) => {   // 👈 Asegúrate de poner async 
 
   const accessToken = crypto.randomBytes(32).toString('hex');
 
-  // ✅ Guarda en tu colección Token
+
   const token = new Token({
     accessToken,
     userId: authCode.userId,

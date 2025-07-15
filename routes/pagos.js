@@ -350,11 +350,13 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
   }
 });
 
-const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware'); // Asegúrate de importarlo
+// ✅ Ruta corregida: obtiene la próxima fecha de pago usando userId manual (Wear OS)
+router.get('/proxima-fecha', async (req, res) => {
+  const userId = req.headers['x-user-id'];
 
-// ✅ Ruta corregida: obtiene la próxima fecha de pago del usuario usando access_token
-router.get('/proxima-fecha', verifyAccessToken, async (req, res) => {
-  const userId = req.userId; // Ya viene del token verificado
+  if (!userId) {
+    return res.status(400).json({ message: 'Falta userId' });
+  }
 
   try {
     // Busca todas las tandas donde el userId esté en fechasPago

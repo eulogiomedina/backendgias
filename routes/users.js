@@ -94,25 +94,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ NUEVA: Obtener datos del usuario logueado
+// ✅ NUEVO: Obtener datos del usuario logueado usando userId manual (token Wear OS)
 // ------------------------
 router.get('/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
+  const userId = req.headers['x-user-id'];
 
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Falta access token' });
+  if (!userId) {
+    return res.status(400).json({ message: 'Falta userId' });
   }
 
-  const token = authHeader.split(' ')[1];
-
   try {
-    const tokenDoc = await Token.findOne({ accessToken: token });
-
-    if (!tokenDoc) {
-      return res.status(401).json({ message: 'Token inválido o expirado' });
-    }
-
-    const user = await User.findById(tokenDoc.userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -129,6 +121,5 @@ router.get('/me', async (req, res) => {
     res.status(500).json({ message: 'Error del servidor' });
   }
 });
-
 
 module.exports = router;
