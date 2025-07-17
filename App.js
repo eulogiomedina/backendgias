@@ -127,6 +127,7 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Middleware para manejar errores globales
 app.use((err, req, res, next) => {
+  console.error('[GLOBAL ERROR]', err.stack);
   const statusCode = err.status || 500;
   res.status(statusCode).json({ errorCode: statusCode });
 });
