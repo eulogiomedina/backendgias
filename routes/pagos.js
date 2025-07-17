@@ -9,6 +9,7 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const Tesseract = require("tesseract.js");
 const { enviarNotificacionEstadoPago, enviarNotificacionAtraso } = require("../utils/emailService");
+const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware');
 
 // 📦 Configuración de Cloudinary
 cloudinary.config({
