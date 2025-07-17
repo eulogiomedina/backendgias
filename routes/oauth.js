@@ -13,25 +13,20 @@ router.use(express.urlencoded({ extended: true }));
 
 /**
  * 1) GET /oauth/login
- *    Muestra siempre el formulario de login, recibiendo:
- *      - response_type=code
- *      - client_id
- *      - redirect_uri
- *      - state (opcional)
  */
 router.get('/login', (req, res) => {
+  console.log('[OAuth GET /login] query:', req.query);
   const { response_type, client_id, redirect_uri, state } = req.query;
 
-  // Validaciones mínimas
   if (
     response_type !== 'code' ||
     client_id !== process.env.ALEXA_CLIENT_ID ||
     !redirect_uri
   ) {
+    console.error('[OAuth GET /login] Parámetros inválidos');
     return res.status(400).send('Parámetros OAuth inválidos');
   }
 
-  // Renderizar la vista EJS `views/login.ejs`
   res.render('login', {
     error: null,
     oauth: { response_type, client_id, redirect_uri, state }
@@ -40,41 +35,39 @@ router.get('/login', (req, res) => {
 
 /**
  * 2) POST /oauth/login
- *    Procesa las credenciales, genera un código y redirige
- *    de vuelta a Alexa con ?code=…&state=…
  */
 router.post('/login', async (req, res) => {
+  console.log('[OAuth POST /login] body:', req.body);
   const { correo, password, response_type, client_id, redirect_uri, state } = req.body;
 
   try {
-    // 2.a) Validar usuario y contraseña
     const user = await User.findOne({ correo });
+    console.log('[OAuth POST /login] Usuario encontrado:', !!user);
+
     if (!user || !(await user.comparePassword(password))) {
+      console.warn('[OAuth POST /login] Credenciales incorrectas');
       throw new Error('Correo o contraseña incorrectos');
     }
 
-    // 2.b) Sólo para Auth Code Grant
     if (response_type === 'code' && client_id === process.env.ALEXA_CLIENT_ID) {
-      // Generar código de autorización
       const code = crypto.randomBytes(16).toString('hex');
-      // Guardarlo en memoria (o BD/Redis si lo prefieres)
       oauthCodes[code] = {
         userId:  user._id.toString(),
         created: Date.now()
       };
+      console.log(`[OAuth POST /login] Código generado ${code} → userId ${user._id}`);
 
-      // Redirigir de vuelta a Alexa
       const url = new URL(redirect_uri);
       url.searchParams.set('code', code);
       if (state) url.searchParams.set('state', state);
+      console.log('[OAuth POST /login] Redirigiendo a:', url.toString());
       return res.redirect(url.toString());
     }
 
-    // Si llegamos aquí, algo no cuadra
     throw new Error('Unsupported response_type');
   }
   catch (err) {
-    // En caso de error, volvemos a mostrar el login con mensaje
+    console.error('[OAuth POST /login] Error:', err.message);
     return res.render('login', {
       error: err.message,
       oauth: { response_type, client_id, redirect_uri, state }
@@ -84,40 +77,43 @@ router.post('/login', async (req, res) => {
 
 /**
  * 3) POST /oauth/token
- *    Alexa intercambia el code por un access_token
  */
 router.post('/token', async (req, res) => {
+  console.log('[OAuth POST /token] body:', req.body);
   const { grant_type, code, client_id, client_secret } = req.body;
 
-  // 3.a) Validar grant_type
   if (grant_type !== 'authorization_code') {
+    console.error('[OAuth POST /token] grant_type no soportado:', grant_type);
     return res.status(400).json({ error: 'unsupported_grant_type' });
   }
-  // 3.b) Validar credenciales del cliente
+
   if (
     client_id     !== process.env.ALEXA_CLIENT_ID ||
     client_secret !== process.env.ALEXA_CLIENT_SECRET
   ) {
+    console.error('[OAuth POST /token] client_id o secret inválido');
     return res.status(401).json({ error: 'invalid_client' });
   }
-  // 3.c) Verificar el código
+
   const entry = oauthCodes[code];
+  console.log('[OAuth POST /token] buscado code:', code, '→ entry:', entry);
+
   if (!entry || Date.now() - entry.created > 5 * 60 * 1000) {
+    console.error('[OAuth POST /token] código inválido o expirado');
     return res.status(400).json({ error: 'invalid_grant' });
   }
 
-  // 3.d) Generar access_token y guardarlo en BD
   const accessToken = crypto.randomBytes(32).toString('hex');
   await new Token({
     accessToken,
     userId:    entry.userId,
-    expiresAt: new Date(Date.now() + 3600 * 1000) // 1 hora
+    expiresAt: new Date(Date.now() + 3600 * 1000)
   }).save();
+  console.log('[OAuth POST /token] Token guardado en BD:', accessToken);
 
-  // Código de un solo uso, limpiar
   delete oauthCodes[code];
+  console.log('[OAuth POST /token] Código de un solo uso eliminado');
 
-  // 3.e) Devolver el token a Alexa
   return res.json({
     access_token:  accessToken,
     token_type:    'Bearer',
