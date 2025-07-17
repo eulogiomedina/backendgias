@@ -5,7 +5,7 @@ const crypto  = require('crypto');
 const User    = require('../models/User');
 const Token   = require('../models/Token');
 
-// **Almacén en memoria de códigos OAuth (code → userId)**
+// Almacén en memoria de códigos OAuth (code → userId)
 const oauthCodes = {};
 
 // Parsear bodies form-urlencoded en todos los POST
@@ -87,21 +87,34 @@ router.post('/login', async (req, res) => {
  */
 router.post('/token', async (req, res) => {
   console.log('[OAuth POST /token] body:', req.body);
-  const { grant_type, code, client_id, client_secret } = req.body;
 
-  if (grant_type !== 'authorization_code') {
-    console.error('[OAuth POST /token] grant_type no soportado:', grant_type);
+  // 3.a) Validar grant_type
+  if (req.body.grant_type !== 'authorization_code') {
+    console.error('[OAuth POST /token] grant_type no soportado:', req.body.grant_type);
     return res.status(400).json({ error: 'unsupported_grant_type' });
   }
 
+  // 3.b) Leer credenciales del header Basic
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Basic ')) {
+    console.error('[OAuth POST /token] falta Authorization Basic header');
+    return res.status(401).json({ error: 'invalid_client' });
+  }
+  const [clientId, clientSecret] = Buffer
+    .from(auth.split(' ')[1], 'base64')
+    .toString()
+    .split(':');
+
   if (
-    client_id     !== process.env.ALEXA_CLIENT_ID ||
-    client_secret !== process.env.ALEXA_CLIENT_SECRET
+    clientId     !== process.env.ALEXA_CLIENT_ID ||
+    clientSecret !== process.env.ALEXA_CLIENT_SECRET
   ) {
-    console.error('[OAuth POST /token] client_id o client_secret inválidos:', { client_id, client_secret: '(<omitted>)' });
+    console.error('[OAuth POST /token] credenciales BASIC inválidas:', { clientId, clientSecret: '(<omitted>)' });
     return res.status(401).json({ error: 'invalid_client' });
   }
 
+  // 3.c) Verificar el código
+  const { code } = req.body;
   const entry = oauthCodes[code];
   console.log('[OAuth POST /token] Buscando code:', code, '→ entry:', entry);
 
@@ -110,6 +123,7 @@ router.post('/token', async (req, res) => {
     return res.status(400).json({ error: 'invalid_grant' });
   }
 
+  // 3.d) Generar access_token y guardar en BD
   const accessToken = crypto.randomBytes(32).toString('hex');
   await new Token({
     accessToken,
@@ -118,9 +132,11 @@ router.post('/token', async (req, res) => {
   }).save();
   console.log('[OAuth POST /token] Token guardado en BD:', accessToken);
 
+  // Código de un solo uso, limpiar
   delete oauthCodes[code];
   console.log('[OAuth POST /token] Código de un solo uso eliminado:', code);
 
+  // 3.e) Devolver token
   return res.json({
     access_token:  accessToken,
     token_type:    'Bearer',
