@@ -17,6 +17,10 @@ dotenv.config();
 
 const app = express();
 
+// Configurar EJS como motor de plantillas alexas
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 // Habilitar CORS
 const corsOptions = {
   origin: 'https://forntendgias.vercel.app', //  https://forntendgias.vercel.app----http://localhost:3000
@@ -26,6 +30,7 @@ app.use(cors(corsOptions));
 
 // Middleware para parsear JSON
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Conectar a MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -102,10 +107,6 @@ app.use("/api/pagos", pagosRoutes);
 app.use('/api', estadoRoutes);
 app.use("/api/cuenta-destino", cuentaDestinoRoutes);
 app.use('/api/wearos', wearosRoutes);
-
-// Configurar EJS como motor de plantillas alexas
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
 app.use('/oauth', oauthRoutes);//alexa
 
 // Ruta para verificar que el servidor funciona
