@@ -351,46 +351,43 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
   }
 });
 
-/**
- * GET /api/proxima-fecha
- * Devuelve la próxima fecha de pago para el usuario vinculado
- * Requiere Authorization: Bearer <token>
- */
+// GET /api/proxima-fecha alexa
 router.get('/proxima-fecha', verifyAccessToken, async (req, res) => {
-  const userId = req.userId;
+  // convierte el string a ObjectId
+  const userObjectId = new mongoose.Types.ObjectId(req.userId);
 
   try {
-    // Busca tandas donde el userId esté en fechasPago
-    const tandas = await Tanda.find({ 'fechasPago.userId': userId });
+    // 1) Encuentra las tandas que contienen al usuario en fechasPago
+    const tandas = await Tanda.find({ 'fechasPago.userId': userObjectId });
 
+    // 2) Extrae de cada tanda los items de fechasPago que correspondan a este usuario
     let fechasPendientes = [];
     tandas.forEach(tanda => {
       const pendientes = tanda.fechasPago.filter(f =>
-        f.userId.toString() === userId && f.fechaPago
+        f.userId.equals(userObjectId) && f.fechaPago
       );
       fechasPendientes.push(...pendientes);
     });
 
-    // Excluir pagos ya realizados
-    const historialPagos = await Pago.find({ userId });
+    // 3) Excluir las fechas que ya tienen un pago registrado
+    const historialPagos = await Pago.find({ userId: userObjectId }).select('fechaPago');
     fechasPendientes = fechasPendientes.filter(f =>
       !historialPagos.some(h =>
-        h.fechaPago &&
         new Date(h.fechaPago).getTime() === new Date(f.fechaPago).getTime()
       )
     );
 
+    // 4) Ordenar y devolver la primera fecha
     fechasPendientes.sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago));
-
     if (fechasPendientes.length === 0) {
       return res.status(404).json({ message: 'No hay fechas pendientes.' });
     }
 
-    res.json({ proximaFechaPago: fechasPendientes[0].fechaPago });
-  } catch (err) {
+    return res.json({ proximaFechaPago: fechasPendientes[0].fechaPago });
+  }
+  catch (err) {
     console.error('Error al buscar próxima fecha de pago:', err);
-    res.status(500).json({ message: 'Error al buscar próxima fecha de pago' });
+    return res.status(500).json({ message: 'Error al buscar próxima fecha de pago' });
   }
 });
-
 module.exports = router;

@@ -77,6 +77,7 @@ const estadoRoutes = require('./routes/estados');
 const cuentaDestinoRoutes = require("./routes/cuentaDestino");
 const wearosRoutes = require('./routes/wearos');
 const oauthRoutes = require('./routes/oauth');//alexa
+const alexaRoutes = require('./routes/oauth');  // que contiene GET /me y GET /proxima-fecha
 
 // Usar las rutas
 app.use('/api/users', usersRoute);
@@ -108,6 +109,7 @@ app.use('/api', estadoRoutes);
 app.use("/api/cuenta-destino", cuentaDestinoRoutes);
 app.use('/api/wearos', wearosRoutes);
 app.use('/oauth', oauthRoutes);//alexa
+app.use('/api', alexaRoutes);
 
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
