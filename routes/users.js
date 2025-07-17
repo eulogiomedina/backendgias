@@ -94,32 +94,25 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ NUEVO: Obtener datos del usuario logueado usando userId manual (token Wear OS)
-// ------------------------
-router.get('/me', async (req, res) => {
-  const userId = req.headers['x-user-id'];
-
-  if (!userId) {
-    return res.status(400).json({ message: 'Falta userId' });
-  }
-
-  try {
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
+// GET /api/user/me
+// Devuelve únicamente el nombre del usuario vinculado
+router.get(
+  '/me',
+  verifyAccessToken,
+  async (req, res) => {
+    try {
+      // Solo traemos el campo 'nombre'
+      const user = await User.findById(req.userId).select('nombre');
+      if (!user) {
+        return res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+      return res.json({ nombre: user.nombre });
+    } catch (error) {
+      console.error('Error al obtener nombre de usuario:', error);
+      return res.status(500).json({ message: 'Error del servidor' });
     }
-
-    res.json({
-      nombre: user.nombre,
-      correo: user.correo,
-      telefono: user.telefono,
-      direccion: user.direccion
-    });
-  } catch (error) {
-    console.error('Error al obtener usuario:', error);
-    res.status(500).json({ message: 'Error del servidor' });
   }
-});
+);
+
 
 module.exports = router;

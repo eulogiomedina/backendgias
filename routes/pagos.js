@@ -350,16 +350,16 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
   }
 });
 
-// ✅ Ruta corregida: obtiene la próxima fecha de pago usando userId manual (Wear OS)
-router.get('/proxima-fecha', async (req, res) => {
-  const userId = req.headers['x-user-id'];
-
-  if (!userId) {
-    return res.status(400).json({ message: 'Falta userId' });
-  }
+/**
+ * GET /api/proxima-fecha
+ * Devuelve la próxima fecha de pago para el usuario vinculado
+ * Requiere Authorization: Bearer <token>
+ */
+router.get('/proxima-fecha', verifyAccessToken, async (req, res) => {
+  const userId = req.userId;
 
   try {
-    // Busca todas las tandas donde el userId esté en fechasPago
+    // Busca tandas donde el userId esté en fechasPago
     const tandas = await Tanda.find({ 'fechasPago.userId': userId });
 
     let fechasPendientes = [];
@@ -387,7 +387,7 @@ router.get('/proxima-fecha', async (req, res) => {
 
     res.json({ proximaFechaPago: fechasPendientes[0].fechaPago });
   } catch (err) {
-    console.error(err);
+    console.error('Error al buscar próxima fecha de pago:', err);
     res.status(500).json({ message: 'Error al buscar próxima fecha de pago' });
   }
 });
