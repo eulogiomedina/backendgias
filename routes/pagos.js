@@ -351,43 +351,4 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
   }
 });
 
-// GET /api/proxima-fecha alexa
-router.get('/proxima-fecha', verifyAccessToken, async (req, res) => {
-  // convierte el string a ObjectId
-  const userObjectId = new mongoose.Types.ObjectId(req.userId);
-
-  try {
-    // 1) Encuentra las tandas que contienen al usuario en fechasPago
-    const tandas = await Tanda.find({ 'fechasPago.userId': userObjectId });
-
-    // 2) Extrae de cada tanda los items de fechasPago que correspondan a este usuario
-    let fechasPendientes = [];
-    tandas.forEach(tanda => {
-      const pendientes = tanda.fechasPago.filter(f =>
-        f.userId.equals(userObjectId) && f.fechaPago
-      );
-      fechasPendientes.push(...pendientes);
-    });
-
-    // 3) Excluir las fechas que ya tienen un pago registrado
-    const historialPagos = await Pago.find({ userId: userObjectId }).select('fechaPago');
-    fechasPendientes = fechasPendientes.filter(f =>
-      !historialPagos.some(h =>
-        new Date(h.fechaPago).getTime() === new Date(f.fechaPago).getTime()
-      )
-    );
-
-    // 4) Ordenar y devolver la primera fecha
-    fechasPendientes.sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago));
-    if (fechasPendientes.length === 0) {
-      return res.status(404).json({ message: 'No hay fechas pendientes.' });
-    }
-
-    return res.json({ proximaFechaPago: fechasPendientes[0].fechaPago });
-  }
-  catch (err) {
-    console.error('Error al buscar próxima fecha de pago:', err);
-    return res.status(500).json({ message: 'Error al buscar próxima fecha de pago' });
-  }
-});
 module.exports = router;

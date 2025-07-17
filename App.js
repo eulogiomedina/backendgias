@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -5,39 +6,27 @@ const cors = require('cors');
 const session = require('express-session');
 const crypto = require('crypto');
 const MongoStore = require('connect-mongo');
-const protectedRoutes = require('./routes/protectedRoutes');
-const validateRoutes = require('./routes/validate');
-const phoneRoutes = require('./routes/validatePhone');
-const cupomexRoutes = require('./routes/cupomex');
-const blockedAccountsRoutes = require('./routes/blockedAccounts');
 const path = require('path');
 
-
 dotenv.config();
-
 const app = express();
 
-// Configurar EJS como motor de plantillas alexas
+// ————— Configuración base —————
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Habilitar CORS
-const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', //  https://forntendgias.vercel.app----http://localhost:3000
-  credentials: true, // Para permitir cookies, si es necesario
-};
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: 'https://forntendgias.vercel.app',
+  credentials: true,
+}));
 
-// Middleware para parsear JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Conectar a MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('Conectado a MongoDB'))
-  .catch(err => console.log(err));
+  .catch(err => console.error(err));
 
-// Configurar sesiones seguras
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
@@ -47,101 +36,80 @@ app.use(session({
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 30 * 60 * 1000 // 30 minutos
+    maxAge: 30 * 60 * 1000,
   },
-  genid: function(req) {
-    return crypto.randomBytes(32).toString('hex'); // Generar un ID de sesión único
-  }
+  genid: () => crypto.randomBytes(32).toString('hex'),
 }));
 
-// Importar rutas
-const usersRoute = require('./routes/users');
-const authRoute = require('./routes/auth');
-const policyRoute = require('./routes/policyRoutes');  // Rutas de políticas
-const termsRoute = require('./routes/terms');
-const passwordResetRoutes = require('./routes/passwordReset');
-const auditRoute = require('./routes/audit'); // Rutas de auditoría
-const contactRoute = require('./routes/contact');
-const socialLinksRoutes = require('./routes/socialLinks');
-const legalBoundaryRoute = require('./routes/legalBoundaryRoutes');
-const sloganRoutes = require('./routes/SloganRoutes');
-const logoRoutes = require('./routes/logoRoutes'); // Ruta de logo
-const chatbotRoutes = require('./routes/chatbot');
-const accountRoutes = require('./routes/accountRoutes');
-const nuevosAhorrosRoutes = require("./routes/nuevosAhorros");
-const ahorrosUsuariosRoutes = require("./routes/ahorrosUsuarios");
-const perfilRoutes = require('./routes/perfil');
-const tandasRoutes = require("./routes/tandas");
-const pagosRoutes = require("./routes/pagos");
-const estadoRoutes = require('./routes/estados');
-const cuentaDestinoRoutes = require("./routes/cuentaDestino");
-const wearosRoutes = require('./routes/wearos');
-const oauthRoutes = require('./routes/oauth');//alexa
-const alexaRoutes = require('./routes/oauth');  // que contiene GET /me y GET /proxima-fecha
+// ————— Importar rutas de tu API normal —————
+const usersRoute           = require('./routes/users');
+const authRoute            = require('./routes/auth');
+const policyRoute          = require('./routes/policyRoutes');
+const termsRoute           = require('./routes/terms');
+const passwordResetRoutes  = require('./routes/passwordReset');
+const auditRoute           = require('./routes/audit');
+const contactRoute         = require('./routes/contact');
+const socialLinksRoutes    = require('./routes/socialLinks');
+const legalBoundaryRoute   = require('./routes/legalBoundaryRoutes');
+const sloganRoutes         = require('./routes/SloganRoutes');
+const logoRoutes           = require('./routes/logoRoutes');
+const chatbotRoutes        = require('./routes/chatbot');
+const accountRoutes        = require('./routes/accountRoutes');
+const nuevosAhorrosRoutes  = require('./routes/nuevosAhorros');
+const ahorrosUsuariosRoutes= require('./routes/ahorrosUsuarios');
+const perfilRoutes         = require('./routes/perfil');
+const tandasRoutes         = require('./routes/tandas');
+const pagosRoutes          = require('./routes/pagos');
+const estadoRoutes         = require('./routes/estados');
+const cuentaDestinoRoutes  = require('./routes/cuentaDestino');
+const wearosRoutes         = require('./routes/wearos');
 
-// Usar las rutas
+// ————— Importar rutas específicas de Alexa —————
+const alexaRoutes = require('./routes/alexa');
+
+// ————— Montaje de rutas —————
 app.use('/api/users', usersRoute);
 app.use('/api/auth', authRoute);
 app.use('/api/policies', policyRoute);
 app.use('/api/terms', termsRoute);
 app.use('/api/password', passwordResetRoutes);
 app.use('/api/contact', contactRoute);
-// Rutas protegidas
-app.use('/api', protectedRoutes);
 app.use('/api/audit', auditRoute);
-// Rutas de restablecimiento de contraseña
 app.use('/api/social-links', socialLinksRoutes);
 app.use('/api/legal-boundaries', legalBoundaryRoute);
 app.use('/api/slogan', sloganRoutes);
 app.use('/api/logo', logoRoutes);
-app.use('/api', validateRoutes);
-app.use('/api', phoneRoutes);
-app.use('/api/cupomex', cupomexRoutes);
-app.use('/api/accounts', blockedAccountsRoutes);
 app.use('/api/chatbot', chatbotRoutes);
-app.use('/api/acc', accountRoutes);
-app.use("/api/nuevos-ahorros", nuevosAhorrosRoutes);
-app.use("/api/ahorros-usuarios", ahorrosUsuariosRoutes);
-app.use("/api/perfil", perfilRoutes);
-app.use("/api/tandas", tandasRoutes);
-app.use("/api/pagos", pagosRoutes);
-app.use('/api', estadoRoutes);
-app.use("/api/cuenta-destino", cuentaDestinoRoutes);
+app.use('/api/accounts', accountRoutes);
+app.use('/api/nuevos-ahorros', nuevosAhorrosRoutes);
+app.use('/api/ahorros-usuarios', ahorrosUsuariosRoutes);
+app.use('/api/perfil', perfilRoutes);
+app.use('/api/tandas', tandasRoutes);
+app.use('/api/pagos', pagosRoutes);
+app.use('/api/estados', estadoRoutes);
+app.use('/api/cuenta-destino', cuentaDestinoRoutes);
 app.use('/api/wearos', wearosRoutes);
-app.use('/oauth', oauthRoutes);//alexa
-app.use('/api', alexaRoutes);
 
-// Ruta para verificar que el servidor funciona
-app.get('/', (req, res) => {
-  res.send('¡Servidor funcionando!');
-});
+// **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
+app.use('/api/alexa', alexaRoutes);
 
-// Ruta para cerrar sesión
+// Ruta raíz y gestión de 404 / errores
+app.get('/', (req, res) => res.send('¡Servidor funcionando!'));
+
 app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(err => {
-    if (err) {
-      return res.status(500).send('No se pudo cerrar la sesión');
-    }
+    if (err) return res.status(500).send('No se pudo cerrar la sesión');
     res.clearCookie('connect.sid');
-    res.status(200).send('Sesión cerrada correctamente');
+    res.sendStatus(200);
   });
 });
 
-// Middleware para manejar errores globales
 app.use((err, req, res, next) => {
   console.error('[GLOBAL ERROR]', err.stack);
-  const statusCode = err.status || 500;
-  res.status(statusCode).json({ errorCode: statusCode });
+  res.status(err.status || 500).json({ errorCode: err.status || 500 });
 });
 
-// Middleware para manejar errores 404
-app.use((req, res) => {
-  res.status(404).json({ errorCode: 404 });
-});
+app.use((req, res) => res.status(404).json({ errorCode: 404 }));
 
-// Escuchar en el puerto configurado
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
-
+app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));

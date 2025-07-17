@@ -95,25 +95,5 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/user/me
-// Devuelve únicamente el nombre del usuario vinculado
-router.get(
-  '/me',
-  verifyAccessToken,
-  async (req, res) => {
-    try {
-      // Solo traemos el campo 'nombre'
-      const user = await User.findById(req.userId).select('nombre');
-      if (!user) {
-        return res.status(404).json({ message: 'Usuario no encontrado' });
-      }
-      return res.json({ nombre: user.nombre });
-    } catch (error) {
-      console.error('Error al obtener nombre de usuario:', error);
-      return res.status(500).json({ message: 'Error del servidor' });
-    }
-  }
-);
-
 
 module.exports = router;
