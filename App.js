@@ -65,7 +65,7 @@ const cuentaDestinoRoutes  = require('./routes/cuentaDestino');
 const wearosRoutes         = require('./routes/wearos');
 
 // ————— Importar rutas específicas de Alexa —————
-const alexaRoutes = require('./routes/alexa');
+const alexaAuthRoutes = require('./routes/alexa'); 
 
 // ————— Montaje de rutas —————
 app.use('/api/users', usersRoute);
@@ -91,7 +91,7 @@ app.use('/api/cuenta-destino', cuentaDestinoRoutes);
 app.use('/api/wearos', wearosRoutes);
 
 // **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
-app.use('/api/alexa', alexaRoutes);
+app.use('/api/alexa', alexaAuthRoutes);
 
 // Ruta raíz y gestión de 404 / errores
 app.get('/', (req, res) => res.send('¡Servidor funcionando!'));

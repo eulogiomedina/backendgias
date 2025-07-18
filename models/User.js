@@ -27,6 +27,9 @@ const userSchema = new mongoose.Schema({
     // CAMPOS PARA WEAR OS
   tokenWearOS: { type: String, default: null },          // Token de 5 dígitos
   tokenWearOSActivo: { type: Boolean, default: false },  // Saber si está activo para recibir notificaciones
+
+  pinAlexa: { type: String, default: null },  // El PIN (ej. "123456")
+  pinAlexaActivo: { type: Boolean, default: false }  // true = listo para usar, false = ya validado / expirado
 });
 
 // Máximo de intentos fallidos y tiempo de bloqueo
