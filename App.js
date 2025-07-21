@@ -16,7 +16,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.use(cors({
-  origin: 'https://forntendgias.vercel.app',
+  origin: 'https://forntendgias.vercel.app', //  https://forntendgias.vercel.app----http://localhost:3000
   credentials: true,
 }));
 
@@ -66,6 +66,7 @@ const wearosRoutes         = require('./routes/wearos');
 
 // ————— Importar rutas específicas de Alexa —————
 const alexaAuthRoutes = require('./routes/alexa'); 
+const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
 
 // ————— Montaje de rutas —————
 app.use('/api/users', usersRoute);
@@ -89,6 +90,7 @@ app.use('/api/pagos', pagosRoutes);
 app.use('/api/estados', estadoRoutes);
 app.use('/api/cuenta-destino', cuentaDestinoRoutes);
 app.use('/api/wearos', wearosRoutes);
+app.use('/api/solicitudes-prestamo', solicitudesPrestamoRoutes);
 
 // **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
 app.use('/api/alexa', alexaAuthRoutes);
