@@ -44,9 +44,7 @@ router.post('/validar-pin', async (req, res) => {
       console.warn(`❌ PIN Alexa inválido: ${pin}`);
       return res.status(400).json({ success: false, message: 'PIN inválido' });
     }
-    // Desactivar el PIN tras el primer uso
-    user.pinAlexaActivo = false;
-    await user.save();
+  
     console.log(`✅ PIN Alexa válido para ${user.correo}`);
     res.json({ success: true, userId: user._id, nombre: user.nombre });
   } catch (err) {
@@ -73,41 +71,86 @@ router.get('/nombre/:userId', async (req, res) => {
 
 /**
  * GET /api/alexa/proxima-fecha/:userId
+ * Devuelve:
+ * {
+ *   proximaFechaPago: <ISODate>,
+ *   monto:            <Number>,
+ *   tipoTanda:        <String>
+ * }
+ *
+ * Si el usuario participa en varias tandas, siempre se
+ * devuelve el pago pendiente más cercano en el tiempo.
  */
 router.get('/proxima-fecha/:userId', async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.params.userId);
-    const tandas = await Tanda.find({ 'fechasPago.userId': userId });
 
-    let fechasPrevistas = [];
+    /* ──────────────────────────────────────────────
+       1. Trae solo lo necesario: fechasPago + monto + tipo
+       ────────────────────────────────────────────── */
+    const tandas = await Tanda.find(
+      { 'fechasPago.userId': userId },
+      { monto: 1, tipo: 1, fechasPago: 1 }
+    ).lean();
+
+    /* ──────────────────────────────────────────────
+       2. Construye una lista {fechaPago,monto,tipo}
+          SOLO para este usuario
+       ────────────────────────────────────────────── */
+    const todasLasFechas = [];
     tandas.forEach(t => {
-      fechasPrevistas.push(
-        ...t.fechasPago
-           .filter(f => f.userId.equals(userId) && f.fechaPago)
-           .map(f => f.fechaPago)
-      );
+      const { monto, tipo } = t;
+      t.fechasPago
+        .filter(f => f.userId.equals(userId) && f.fechaPago)
+        .forEach(f => {
+          todasLasFechas.push({
+            fechaPago: f.fechaPago,
+            monto,
+            tipoTanda: tipo
+          });
+        });
     });
 
-    const pagosRealizados = await Pago.find({ userId }).select('fechaPago').lean();
-    const fechasPagadas = pagosRealizados.map(p => p.fechaPago.toISOString());
+    /* ──────────────────────────────────────────────
+       3. Obtén los pagos que YA se hicieron
+       ────────────────────────────────────────────── */
+    const pagosHechos = await Pago.find({ userId })
+                                  .select('fechaPago')
+                                  .lean();
+    const fechasPagadas = new Set(
+      pagosHechos.map(p => p.fechaPago.toISOString())
+    );
 
-    const pendientes = fechasPrevistas
-      .map(d => d.toISOString())
-      .filter(f => !fechasPagadas.includes(f))
-      .map(s => new Date(s));
+    /* ──────────────────────────────────────────────
+       4. Filtra pendientes y ordena por fecha
+       ────────────────────────────────────────────── */
+    const pendientes = todasLasFechas
+      .filter(f => !fechasPagadas.has(f.fechaPago.toISOString()))
+      .sort((a, b) => a.fechaPago - b.fechaPago);
 
     if (!pendientes.length) {
-      return res.status(404).json({ message: 'No hay fechas de pago pendientes.' });
+      return res.status(404).json({
+        message: 'No hay fechas de pago pendientes.'
+      });
     }
 
-    pendientes.sort((a, b) => a - b);
-    res.json({ proximaFechaPago: pendientes[0] });
+    /* ──────────────────────────────────────────────
+       5. Respuesta con la más próxima
+       ────────────────────────────────────────────── */
+    const { fechaPago, monto, tipoTanda } = pendientes[0];
+    res.json({
+      proximaFechaPago: fechaPago,
+      monto,
+      tipoTanda
+    });
+
   } catch (err) {
     console.error('Error obteniendo próxima fecha de pago:', err);
-    res.status(500).json({ message: 'Error interno al calcular próxima fecha.' });
+    res.status(500).json({
+      message: 'Error interno al calcular próxima fecha.'
+    });
   }
 });
-
 /**
  * GET /api/alexa/admin-contact
  */
