@@ -9,6 +9,7 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const Tesseract = require("tesseract.js");
 const { enviarNotificacionEstadoPago, enviarNotificacionAtraso } = require("../utils/emailService");
+const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware');
 
 // 📦 Configuración de Cloudinary
 cloudinary.config({
@@ -268,9 +269,10 @@ router.post("/", upload.single("comprobante"), async (req, res) => {
     await enviarNotificacionEstadoPago(usuario, nuevoPago, tanda);
     
     // Si el pago está atrasado, enviar notificación adicional
-    if (estaAtrasado) {
-      await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
-    }
+    if (nuevoPago.conPenalizacion) {
+  await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
+}
+
 
     res.json({
       message: resultadoOCR.mensaje,
@@ -426,6 +428,5 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error });
   }
 });
-
 
 module.exports = router;

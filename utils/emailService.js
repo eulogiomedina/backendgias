@@ -104,7 +104,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     subject: `Estado de Pago - ${pago.estado}`,
     html: `
       <h2>Hola ${usuario.nombre},</h2>
-      <p>Tu pago por $${pago.monto} ${estadoTexto[pago.estado]}.</p>
+      <p>Tu pago por $${pago.monto} ${estadoTexto[pago.estado] || "tiene un estado desconocido"}.</p>
       <p>Detalles del pago:</p>
       <ul>
         <li>Fecha de pago: ${fechaPagoFormateada}</li>
@@ -173,3 +173,4 @@ module.exports = {
   enviarNotificacionEstadoPago,
   enviarNotificacionAtraso
 };
+// Este módulo maneja el envío de correos electrónicos y notificaciones para recordatorios de pagos, estados de pago y atrasos.

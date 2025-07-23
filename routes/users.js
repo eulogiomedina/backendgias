@@ -3,7 +3,8 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const router = express.Router();
-
+const Token = require('../models/Token');
+const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware');
 // Ruta para registrar usuario
 router.post('/register', async (req, res) => {
   const { nombre, apellidos, correo, password, telefono, estado, municipio, colonia } = req.body;
