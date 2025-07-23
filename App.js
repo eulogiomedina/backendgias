@@ -68,7 +68,7 @@ const wearosRoutes         = require('./routes/wearos');
 // ————— Importar rutas específicas de Alexa —————
 const alexaAuthRoutes = require('./routes/alexa'); 
 const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
-const openpayRoutes = require('./routes/openpayRoutes');
+
 
 // ————— Montaje de rutas —————
 app.use('/api/users', usersRoute);
