@@ -67,6 +67,7 @@ const wearosRoutes         = require('./routes/wearos');
 // ————— Importar rutas específicas de Alexa —————
 const alexaAuthRoutes = require('./routes/alexa'); 
 const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
+const openpayRoutes = require('./routes/openpayRoutes');
 
 // ————— Montaje de rutas —————
 app.use('/api/users', usersRoute);
@@ -94,7 +95,7 @@ app.use('/api/solicitudes-prestamo', solicitudesPrestamoRoutes);
 
 // **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
 app.use('/api/alexa', alexaAuthRoutes);
-
+app.use('/api/openpay', openpayRoutes); 
 // Ruta raíz y gestión de 404 / errores
 app.get('/', (req, res) => res.send('¡Servidor funcionando!'));
 
