@@ -66,10 +66,6 @@ const mercadopagoRoutes = require('./routes/mercadopago');
 const wearosRoutes         = require('./routes/wearos');
 
 // ————— Importar rutas específicas de Alexa —————
-
-const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
-
-// ————— Importar rutas específicas de Alexa —————
 const alexaAuthRoutes = require('./routes/alexa'); 
 const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
 const openpayRoutes = require('./routes/openpayRoutes');
