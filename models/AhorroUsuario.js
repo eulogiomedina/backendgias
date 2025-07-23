@@ -8,19 +8,23 @@ const ahorroSchema = new mongoose.Schema({
     enum: ["Semanal", "Quincenal", "Mensual"] 
   },
   fechaInicio: { type: Date, default: Date.now },
-  credencial: { type: String, required: true }, // URL de la imagen
+
+  credencial: { type: String, required: true }, // URL de la credencial
+  fotoPersona: { type: String, required: true }, // Foto con cabello recogido
+
   facebook: { type: String, required: true },
 
-  // CAMPOS NUEVOS para manejar el ciclo de la tanda:
-  orden: { type: Number, default: 1 },            // Posición del usuario en la tanda (1 = el primero, 2 = el segundo, etc.)
-  usuarioHaPagado: { type: Boolean, default: false }, // Indica si ya pagó en este ciclo
-  totalCiclos: { type: Number, default: 10 },      // Número total de ciclos para la tanda
-  siguienteReceptor: { type: String, default: "" } // (Opcional) Para indicar quién es el siguiente
+  orden: { type: Number, default: 1 },
+  usuarioHaPagado: { type: Boolean, default: false },
+  totalCiclos: { type: Number, default: 10 },
+  siguienteReceptor: { type: String, default: "" },
+
+  nombrePerfil: { type: String, required: true } // ✅ Nombre validado y guardado siempre
 });
 
 const AhorroUsuarioSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  ahorros: [ahorroSchema] // Array de ahorros
+  ahorros: [ahorroSchema]
 });
 
 module.exports = mongoose.model("AhorroUsuario", AhorroUsuarioSchema);

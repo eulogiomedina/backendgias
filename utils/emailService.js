@@ -1,9 +1,12 @@
 const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
+const twilio = require('twilio');
 
 dotenv.config();
 
-// Configurar el transporter de nodemailer
+// --------------------- CONFIGURACIÓN ---------------------
+
+// Nodemailer (Gmail)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -12,9 +15,45 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Función para enviar correo de recordatorio de pago
+// Twilio (WhatsApp)
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+// --------------------- NORMALIZADOR ---------------------
+
+const normalizaNumeroMX = (numeroDestino) => {
+  let numero = numeroDestino;
+  if (numero.startsWith('+52') && !numero.startsWith('+521')) {
+    numero = '+521' + numero.slice(3);
+  }
+  return numero;
+};
+
+// --------------------- FUNCIÓN GENÉRICA WHATSAPP ---------------------
+
+const enviarWhatsApp = async (numeroDestino, mensaje) => {
+  const numeroNormalizado = normalizaNumeroMX(numeroDestino);
+
+  try {
+    const message = await twilioClient.messages.create({
+      body: mensaje,
+      from: process.env.TWILIO_WHATSAPP_NUMBER,
+      to: `whatsapp:${numeroNormalizado}`
+    });
+    console.log('✅ WhatsApp enviado:', message.sid);
+    return message;
+  } catch (error) {
+    console.error('❌ Error enviando WhatsApp:', error);
+    throw error;
+  }
+};
+
+// --------------------- FUNCIÓN: RECORDATORIO PAGO ---------------------
+
 const enviarRecordatorioPago = async (usuario, tanda, fechaProximoPago) => {
-  const fechaFormateada = fechaProximoPago.toISOString().substring(0,10);
+  const fechaFormateada = fechaProximoPago.toISOString().substring(0, 10);
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -33,17 +72,23 @@ const enviarRecordatorioPago = async (usuario, tanda, fechaProximoPago) => {
   };
 
   try {
-    console.log(`📧 Enviando recordatorio a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.response);
-    return info;
+    console.log(`📧 Enviando recordatorio a: ${usuario.correo}...`);
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Correo enviado');
+
+    // WhatsApp con formato bonito
+    const mensajeWhatsApp = `*Hola ${usuario.nombre}*\n\nTe recordamos que tu próximo pago está programado para _${fechaFormateada}_ por *$${tanda.monto}*.\n\n✅ Evita penalizaciones realizando tu pago a tiempo.\n\n*GIAS*`;
+
+    await enviarWhatsApp(usuario.telefono, mensajeWhatsApp);
+    console.log('✅ WhatsApp de recordatorio enviado');
   } catch (error) {
-    console.error('❌ Error al enviar correo de recordatorio:', error);
+    console.error('❌ Error al enviar recordatorio:', error);
     throw error;
   }
 };
 
-// Función para enviar notificación de estado de pago
+// --------------------- FUNCIÓN: NOTIFICACIÓN ESTADO ---------------------
+
 const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
   const estadoTexto = {
     'Pendiente': 'está pendiente de revisión',
@@ -51,7 +96,7 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
     'Rechazado': 'ha sido rechazado'
   };
 
-  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0,10);
+  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0, 10);
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -71,19 +116,24 @@ const enviarNotificacionEstadoPago = async (usuario, pago, tanda) => {
   };
 
   try {
-    console.log(`📧 Enviando notificación de estado a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.response);
-    return info;
+    console.log(`📧 Enviando notificación de estado a: ${usuario.correo}...`);
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Correo enviado');
+
+    const mensajeWhatsApp = `*Hola ${usuario.nombre}*\n\nTu pago de *$${pago.monto}* ${estadoTexto[pago.estado]}.\n\n📅 Fecha: _${fechaPagoFormateada}_\n\n${pago.atraso ? '⚠️ Pago con atraso.\n' : ''}*GIAS*`;
+
+    await enviarWhatsApp(usuario.telefono, mensajeWhatsApp);
+    console.log('✅ WhatsApp de estado enviado');
   } catch (error) {
     console.error('❌ Error al enviar notificación de estado:', error);
     throw error;
   }
 };
 
-// Función para enviar notificación de atraso
+// --------------------- FUNCIÓN: NOTIFICACIÓN ATRASO ---------------------
+
 const enviarNotificacionAtraso = async (usuario, pago, tanda) => {
-  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0,10);
+  const fechaPagoFormateada = pago.fechaPago.toISOString().substring(0, 10);
 
   const mailOptions = {
     from: process.env.EMAIL_USER,
@@ -102,15 +152,21 @@ const enviarNotificacionAtraso = async (usuario, pago, tanda) => {
   };
 
   try {
-    console.log(`📧 Enviando notificación de atraso a: ${usuario.correo} para tanda tipo ${tanda.tipo}`);
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Correo enviado:', info.response);
-    return info;
+    console.log(`📧 Enviando notificación de atraso a: ${usuario.correo}...`);
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Correo enviado');
+
+    const mensajeWhatsApp = `*Hola ${usuario.nombre}*\n\n⚠️ Tu pago de la tanda *${tanda.tipo}* está atrasado.\n\n💰 Monto pendiente: *$${pago.monto}*\n📅 Fecha original: _${fechaPagoFormateada}_\n\nPor favor, realiza tu pago lo antes posible para evitar mayores penalizaciones.\n\n*GIAS*`;
+
+    await enviarWhatsApp(usuario.telefono, mensajeWhatsApp);
+    console.log('✅ WhatsApp de atraso enviado');
   } catch (error) {
     console.error('❌ Error al enviar notificación de atraso:', error);
     throw error;
   }
 };
+
+// --------------------- EXPORTAR ---------------------
 
 module.exports = {
   enviarRecordatorioPago,

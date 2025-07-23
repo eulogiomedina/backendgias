@@ -22,71 +22,103 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// ==================== POST / (Registrar un ahorro) ====================
-router.post("/", upload.single("credencial"), async (req, res) => {
+// ==================== POST / (Registrar uno o varios ahorros) ====================
+router.post("/", upload.fields([
+  { name: "credencial", maxCount: 1 },
+  { name: "fotoPersona", maxCount: 1 }
+]), async (req, res) => {
   try {
-
-    const { userId, monto, tipo, facebook } = req.body;
+    const { userId, monto, tipo, facebook, numeros } = req.body;
 
     if (!userId || !monto || !tipo) {
-      console.error("🚨 Error: Faltan datos obligatorios.");
-      return res.status(400).json({ message: "Faltan datos obligatorios." });
+      return res.status(400).json({ message: "Faltan datos obligatorios: userId, monto o tipo." });
     }
 
-    // Buscar si ya existe un documento para este usuario
+    // ✅ Obtener nombre desde User
+    const User = require("../models/User");
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(400).json({ message: "Usuario no encontrado." });
+    }
+
+    const nombrePerfil = user.nombre; // O el campo real de tu modelo
+
+    const numNumeros = parseInt(numeros) || 1; // Por defecto, 1
+
+    // Verificar foto de persona
+    if (!req.files || !req.files.fotoPersona || req.files.fotoPersona.length === 0) {
+      return res.status(400).json({ message: "Debes subir una foto de la persona con cabello recogido." });
+    }
+
+    // Verificar credencial
+    if (!req.files.credencial || req.files.credencial.length === 0) {
+      return res.status(400).json({ message: "Debes subir una imagen de tu credencial de elector." });
+    }
+
+    // ✅ Subir foto de persona
+    const fotoPersonaResult = await cloudinary.uploader.upload(req.files.fotoPersona[0].path);
+    const fotoPersonaUrl = fotoPersonaResult.secure_url;
+
+    // ✅ Subir credencial
+    const credencialResult = await cloudinary.uploader.upload(req.files.credencial[0].path);
+    const credencialUrl = credencialResult.secure_url;
+
+    // OCR credencial
+    const ocrCredencial = await Tesseract.recognize(credencialUrl, "spa");
+    const textoCredencial = ocrCredencial.data.text;
+
+    const palabrasClave = ["Instituto Nacional Electoral", "CURP", "Clave de Elector", "Nombre"];
+    const esCredencial = palabrasClave.some((palabra) => textoCredencial.includes(palabra));
+    if (!esCredencial) {
+      return res.status(400).json({ message: "La imagen no parece ser una credencial de elector válida." });
+    }
+
+    // ✅ Validar nombre del perfil registrado
+    const nombrePerfilLower = nombrePerfil.toLowerCase();
+    if (!textoCredencial.toLowerCase().includes(nombrePerfilLower)) {
+      return res.status(400).json({ message: "El nombre en la credencial no coincide con tu nombre registrado." });
+    }
+
+    // ✅ Crear o actualizar documento
     let ahorroUsuario = await AhorroUsuario.findOne({ userId });
 
-    let credencialUrl = "";
-    let facebookValue = "";
+    let facebookValue = facebook || "";
+    let ordenInicio = ahorroUsuario ? ahorroUsuario.ahorros.length + 1 : 1;
+
+    const nuevosAhorros = [];
+
+    for (let i = 0; i < numNumeros; i++) {
+      const nuevoAhorro = {
+        monto,
+        tipo,
+        facebook: facebookValue,
+        credencial: credencialUrl,
+        fotoPersona: fotoPersonaUrl,
+        nombrePerfil, // Guardar nombre validado
+        fechaInicio: new Date(),
+        orden: ordenInicio + i,
+      };
+      nuevosAhorros.push(nuevoAhorro);
+    }
 
     if (ahorroUsuario) {
-      credencialUrl = ahorroUsuario.ahorros[0].credencial;
-      facebookValue = ahorroUsuario.ahorros[0].facebook;
-      const nuevoOrden = ahorroUsuario.ahorros.length + 1;
-      const nuevoAhorro = {
-        monto,
-        tipo,
-        facebook: facebookValue,
-        credencial: credencialUrl,
-        fechaInicio: new Date(),
-        orden: nuevoOrden,
-      };
-
-      ahorroUsuario.ahorros.push(nuevoAhorro);
-      await ahorroUsuario.save();
-      return res.json({ message: "Ahorro guardado exitosamente.", ahorro: nuevoAhorro });
+      ahorroUsuario.ahorros.push(...nuevosAhorros);
     } else {
-      
-      if (!req.file) {
-        console.error("🚨 Error: No se recibió imagen de credencial.");
-        return res.status(400).json({ message: "Debes subir una imagen de tu credencial." });
-      }
-
-      const uploadResult = await cloudinary.uploader.upload(req.file.path);
-      
-      credencialUrl = uploadResult.secure_url;
-      facebookValue = facebook;
-
-      const nuevoAhorro = {
-        monto,
-        tipo,
-        facebook: facebookValue,
-        credencial: credencialUrl,
-        fechaInicio: new Date(),
-        orden: 1,
-      };
-
       ahorroUsuario = new AhorroUsuario({
         userId,
-        ahorros: [nuevoAhorro],
+        ahorros: nuevosAhorros
       });
-
-      await ahorroUsuario.save();
-      return res.json({ message: "Ahorro guardado exitosamente.", ahorro: nuevoAhorro });
     }
+
+    await ahorroUsuario.save();
+    return res.json({
+      message: `Ahorro(s) guardado(s) exitosamente. Números asignados: ${numNumeros}`,
+      nuevosAhorros
+    });
+
   } catch (error) {
     console.error("❌ Error en el servidor:", error);
-    res.status(500).json({ message: "Error en el servidor", error: error.message });
+    res.status(500).json({ message: "Error en el servidor", error });
   }
 });
 
@@ -155,5 +187,15 @@ router.get("/gestion-cuenta/:userId", async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error });
   }
 });
+// ==================== GET / (Todos los ahorros-usuarios, para el directorio) ====================
+router.get("/", async (req, res) => {
+  try {
+    const ahorrosUsuarios = await AhorroUsuario.find({});
+    res.json(ahorrosUsuarios);
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
 
 module.exports = router;

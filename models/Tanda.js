@@ -19,6 +19,12 @@ const tandaSchema = new mongoose.Schema({
   monto: { type: Number, required: true },
   tipo: { type: String, required: true, enum: ["Semanal", "Quincenal", "Mensual"] },
   fechaInicio: { type: Date, default: null },
+  estado: {
+  type: String,
+  enum: ['Activa', 'Cerrada', 'En espera'],
+  default: 'En espera'
+  },
+
   diaPago: { type: String, default: "Domingo" }, // ✅ Día de pago calculado en base a fechaInicio
   totalCiclos: { type: Number, default: 10 },
   participantes: { type: [participanteSchema], default: [] },

@@ -9,7 +9,8 @@ const { enviarRecordatorioPago } = require("../utils/emailService");
 router.post("/", async (req, res) => {
   try {
     console.log("📩 Datos recibidos en /api/tandas:", req.body);
-    const { monto, tipo, userId } = req.body;
+    const { monto, tipo, userId, numeros } = req.body;
+    const cantidad = parseInt(numeros) || 1;
 
     if (!monto || !tipo || !userId) {
       return res.status(400).json({ message: "Faltan datos obligatorios." });
@@ -18,42 +19,93 @@ router.post("/", async (req, res) => {
     const userObjectId = new mongoose.Types.ObjectId(userId);
     let tanda = await Tanda.findOne({ monto, tipo, iniciada: false });
 
-    if (tanda && tanda.participantes.length < tanda.totalCiclos) {
-      if (tanda.participantes.some(p => p.userId.equals(userObjectId))) {
+    if (tanda) {
+      if (tanda.participantes.length + cantidad > tanda.totalCiclos) {
+        return res.status(400).json({ message: "No hay lugares suficientes disponibles." });
+      }
+
+      const yaRegistrado = tanda.participantes.filter(p => p.userId.equals(userObjectId)).length;
+      if (yaRegistrado > 0) {
         return res.status(400).json({ message: "El usuario ya está en esta tanda." });
       }
 
-      // Agregar nuevo participante
-      tanda.participantes.push({ userId: userObjectId, orden: tanda.participantes.length + 1 });
+      for (let i = 0; i < cantidad; i++) {
+        tanda.participantes.push({
+          userId: userObjectId,
+          orden: tanda.participantes.length + 1
+        });
+      }
 
-      // 🔥 Recalcular fechas de pago
       tanda = await actualizarFechasPago(tanda);
-
       await tanda.save();
       return res.json({ message: "Te uniste a la tanda exitosamente.", tanda });
-    } 
-    
-    // Si no existe la tanda, crearla y calcular fechas
-    else {
-      const nuevaTanda = new Tanda({ 
-        monto, 
-        tipo, 
-        participantes: [{ userId: userObjectId, orden: 1 }],
-        fechaInicio: new Date()
-      });
-
-      // 🔥 Recalcular fechas de pago para la nueva tanda
-      const tandaConFechas = await actualizarFechasPago(nuevaTanda);
-
-      await tandaConFechas.save();
-      return res.json({ message: "Tanda creada exitosamente.", tanda: tandaConFechas });
     }
+
+    // Si no existe tanda, crearla desde cero con la cantidad solicitada
+    const nuevaTanda = new Tanda({
+      monto,
+      tipo,
+      participantes: [],
+      fechaInicio: new Date()
+    });
+
+    for (let i = 0; i < cantidad; i++) {
+      nuevaTanda.participantes.push({
+        userId: userObjectId,
+        orden: nuevaTanda.participantes.length + 1
+      });
+    }
+
+    const tandaConFechas = await actualizarFechasPago(nuevaTanda);
+    await tandaConFechas.save();
+    return res.json({ message: "Tanda creada exitosamente.", tanda: tandaConFechas });
+
   } catch (error) {
     console.error("❌ ERROR DETECTADO EN POST /api/tandas:", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 });
 
+// PATCH /api/tandas/:tandaId/actualizar-orden
+router.patch("/:tandaId/actualizar-orden", async (req, res) => {
+  try {
+    const { tandaId } = req.params;
+    const { participantes } = req.body;
+
+    if (!participantes || !Array.isArray(participantes)) {
+      return res.status(400).json({ message: "Lista de participantes inválida." });
+    }
+
+    const tanda = await Tanda.findById(tandaId).populate("participantes.userId", "nombre apellidos correo telefono");
+    if (!tanda) return res.status(404).json({ message: "Tanda no encontrada." });
+
+    // ✅ Eliminar duplicados por _id de participación ANTES de armar el nuevo array
+    let idsVistos = new Set();
+    let nuevoOrdenParticipantes = [];
+
+    for (const { _id, orden } of participantes) {
+      if (!idsVistos.has(_id)) {
+        let participanteReal = tanda.participantes.find(p => p._id.toString() === _id);
+        if (participanteReal) {
+          participanteReal.orden = orden;
+          nuevoOrdenParticipantes.push(participanteReal);
+          idsVistos.add(_id);
+        }
+      }
+      // Si el _id ya estaba, se ignora ese duplicado
+    }
+
+    tanda.participantes = nuevoOrdenParticipantes;
+
+    await actualizarFechasPago(tanda);
+    await tanda.save();
+
+    res.json({ message: "Orden actualizado correctamente.", tanda });
+  } catch (error) {
+    console.error("❌ Error al actualizar orden:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
 
 // 📌 Iniciar tanda manualmente
 router.patch("/:tandaId/iniciar", async (req, res) => {
@@ -100,8 +152,11 @@ async function actualizarFechasPago(tanda) {
 
   let fechaBase = new Date(tanda.fechaInicio);
   let intervalo = { Semanal: 7, Quincenal: 14, Mensual: 30 }[tanda.tipo] || 7;
-  let totalParticipantes = tanda.participantes.length;
 
+  // ✅ Siempre ordena los participantes por el campo ORDEN
+  tanda.participantes.sort((a, b) => a.orden - b.orden);
+
+  let totalParticipantes = tanda.participantes.length;
   let fechasPago = [];
 
   for (let ciclo = 0; ciclo < totalParticipantes; ciclo++) {
@@ -116,16 +171,19 @@ async function actualizarFechasPago(tanda) {
       let fechaReciboFinal = index === ciclo ? fechaRecibo.toISOString() : null;
 
       fechasPago.push({
+        participacionId: participante._id,  // ✅ identificación única por participación
         userId: participante.userId,
         fechaPago: fechaPagoFinal,
         fechaRecibo: fechaReciboFinal,
       });
     });
+
   }
 
   tanda.fechasPago = fechasPago;
   return tanda;
 }
+
 
 
 // 📌 Registrar pago de un usuario

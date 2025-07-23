@@ -14,10 +14,10 @@ const blockedAccountsRoutes = require('./routes/blockedAccounts');
 dotenv.config();
 
 const app = express();
-
+ 
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', // URL de tu frontend
+  origin: 'https://forntendgias.vercel.app', //  https://forntendgias.vercel.app----http://localhost:3000
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
@@ -68,6 +68,14 @@ const tandasRoutes = require("./routes/tandas");
 const pagosRoutes = require("./routes/pagos");
 const estadoRoutes = require('./routes/estados');
 const cuentaDestinoRoutes = require("./routes/cuentaDestino");
+const notificacionesRouter = require('./routes/notificaciones');
+const openpayRoutes = require('./routes/openpayRoutes');
+const mercadopagoRoutes = require('./routes/mercadopago');
+const wearosRoutes         = require('./routes/wearos');
+
+// ————— Importar rutas específicas de Alexa —————
+const alexaAuthRoutes = require('./routes/alexa'); 
+const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
 
 // Usar las rutas
 app.use('/api/users', usersRoute);
@@ -97,7 +105,14 @@ app.use("/api/tandas", tandasRoutes);
 app.use("/api/pagos", pagosRoutes);
 app.use('/api', estadoRoutes);
 app.use("/api/cuenta-destino", cuentaDestinoRoutes);
+app.use('/api/notificaciones', notificacionesRouter);
+app.use('/api/openpay', openpayRoutes); 
+app.use('/api/mercadopago', mercadopagoRoutes);
+app.use('/api/wearos', wearosRoutes);
+app.use('/api/solicitudes-prestamo', solicitudesPrestamoRoutes);
 
+// **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
+app.use('/api/alexa', alexaAuthRoutes);
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
   res.send('¡Servidor funcionando!');
