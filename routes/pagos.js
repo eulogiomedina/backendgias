@@ -428,5 +428,73 @@ router.patch("/:pagoId/rechazar", async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error });
   }
 });
+router.post("/mercadopago", async (req, res) => {
+  try {
+    const { userId, tandaId, monto } = req.body;
+    if (!userId || !tandaId || !monto) {
+      return res.status(400).json({ message: "Faltan datos obligatorios." });
+    }
+
+    // Validar tanda
+    const tanda = await Tanda.findById(tandaId);
+    if (!tanda) return res.status(404).json({ message: "Tanda no encontrada." });
+
+    // Buscar próxima fecha pendiente
+    const hoy = new Date();
+    const historialPagos = await Pago.find({ userId, tandaId });
+    const fechasPendientes = tanda.fechasPago
+      .filter(f =>
+        f.userId.toString() === userId &&
+        f.fechaPago &&
+        !historialPagos.some(h =>
+          h.fechaPago &&
+          new Date(h.fechaPago).getTime() === new Date(f.fechaPago).getTime()
+        )
+      )
+      .sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago));
+    const proximaFechaPago = fechasPendientes[0];
+
+    if (!proximaFechaPago) {
+      return res.status(400).json({ message: "Ya no tienes fechas pendientes de pago." });
+    }
+
+    const estaAtrasado = new Date(proximaFechaPago.fechaPago) < hoy;
+    const comision = estaAtrasado ? 80 : 0;
+
+    // Checar que no se duplique el pago
+    const yaExiste = await Pago.findOne({
+      userId,
+      tandaId,
+      fechaPago: proximaFechaPago.fechaPago,
+      metodo: "MercadoPago"
+    });
+    if (yaExiste) {
+      return res.status(409).json({ message: "Ya se registró este pago previamente.", pago: yaExiste });
+    }
+
+    // Guardar el nuevo pago
+    const nuevoPago = new Pago({
+      userId,
+      tandaId,
+      monto: parseFloat(monto),
+      estado: "Aprobado",
+      metodo: "MercadoPago",
+      comision,
+      atraso: estaAtrasado,
+      fechaPago: proximaFechaPago.fechaPago,
+      comprobanteUrl: "",
+      mensajeOCR: "Pago registrado automáticamente desde MercadoPago.",
+      conPenalizacion: estaAtrasado,
+      referenciaPago: "front-success"
+    });
+
+    await nuevoPago.save();
+
+    res.json({ message: "Pago registrado correctamente por MercadoPago.", pago: nuevoPago });
+  } catch (error) {
+    console.error("❌ Error al registrar pago MercadoPago:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
 
 module.exports = router;

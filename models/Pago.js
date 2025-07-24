@@ -16,8 +16,8 @@ const pagoSchema = new mongoose.Schema({
   conPenalizacion: { type: Boolean, default: false },
   fechaReprogramada: { type: Date },
   mensajeOCR: { type: String },
-  metodo: { type: String, default: "manual" }, // manual/MercadoPago
-  referenciaPago: { type: String }, // ID MercadoPago
+  metodo: { type: String, default: "manual" }, // "manual" o "MercadoPago"
+  referenciaPago: { type: String }, // ID MercadoPago, si aplica
 });
 
 module.exports = mongoose.model("Pago", pagoSchema);
