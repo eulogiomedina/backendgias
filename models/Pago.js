@@ -4,7 +4,7 @@ const pagoSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   tandaId: { type: mongoose.Schema.Types.ObjectId, ref: "Tanda", required: true },
   monto: { type: Number, required: true },
-  comprobanteUrl: { type: String, required: true },
+  comprobanteUrl: { type: String }, // Opcional
   estado: {
     type: String,
     enum: ["Pendiente", "Aprobado", "Rechazado"],
@@ -13,9 +13,11 @@ const pagoSchema = new mongoose.Schema({
   fechaPago: { type: Date, required: true },
   comision: { type: Number, default: 0 },
   atraso: { type: Boolean, default: false },
-  conPenalizacion: { type: Boolean, default: false }, // ✅ ESTA LÍNEA ES LA QUE TE FALTABA
+  conPenalizacion: { type: Boolean, default: false },
   fechaReprogramada: { type: Date },
-  mensajeOCR: { type: String }
+  mensajeOCR: { type: String },
+  metodo: { type: String, default: "manual" }, // manual/MercadoPago
+  referenciaPago: { type: String }, // ID MercadoPago
 });
 
 module.exports = mongoose.model("Pago", pagoSchema);
