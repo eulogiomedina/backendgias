@@ -11,7 +11,7 @@ const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN,
 });
 
-const APP_URL = "https://forntendgias.vercel.app"; // Cambia si vas a producción
+const APP_URL = "https://forntendgias.vercel.app";
 
 // ----------- CREAR PREFERENCIA MERCADO PAGO --------------
 router.post('/create_preference', async (req, res) => {
@@ -81,15 +81,30 @@ router.post('/webhook', async (req, res) => {
       // Usar el SDK de mercadopago para consultar el pago
       const mp = require('mercadopago');
       mp.configure({ access_token: process.env.MP_ACCESS_TOKEN });
-      const payment = await mp.payment.findById(paymentId);
 
-      // Log completo del pago
-      console.log("===> payment.body:", JSON.stringify(payment.body, null, 2));
+      let payment;
+      try {
+        payment = await mp.payment.findById(paymentId);
+        console.log("===> payment.body:", JSON.stringify(payment.body, null, 2));
+      } catch (err) {
+        console.error("❌ ERROR al consultar el pago en MercadoPago:", err.message, err.response?.body || err);
+        return res.status(400).send("Error consultando el pago en MercadoPago");
+      }
 
       if (payment.body.status === "approved") {
         const userId = payment.body.metadata.userId;
         const tandaId = payment.body.metadata.tandaId;
-        const user = await User.findById(userId);
+
+        let user;
+        try {
+          user = await User.findById(userId);
+          if (!user) {
+            throw new Error('Usuario no encontrado');
+          }
+        } catch (err) {
+          console.error("❌ ERROR buscando usuario en MongoDB:", err.message);
+          return res.status(400).send("Usuario no encontrado");
+        }
 
         // --- GUARDAR EL PAGO EN LA BASE DE DATOS ---
         const pagoObj = {
@@ -101,7 +116,6 @@ router.post('/webhook', async (req, res) => {
           metodo: "MercadoPago",
           comprobanteUrl: payment.body.receipt_url || "",
           referenciaPago: payment.body.id,
-          // Puedes agregar comision, atraso, etc. aquí si lo deseas
         };
 
         console.log("===> Intentando guardar Pago en MongoDB:", pagoObj);
@@ -132,7 +146,11 @@ router.post('/webhook', async (req, res) => {
         } catch (err) {
           console.error("❌ ERROR al enviar correo:", err);
         }
+      } else {
+        console.log("===> El pago no está aprobado, no se guarda ni se envía correo.");
       }
+    } else {
+      console.log("===> No es evento de pago, ignorado.");
     }
     res.status(200).send('OK');
   } catch (err) {
