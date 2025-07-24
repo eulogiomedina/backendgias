@@ -27,9 +27,9 @@ router.post('/create_preference', async (req, res) => {
                 currency_id: 'MXN'
             }],
             back_urls: {
-                success: `${APP_URL}/pagos?status=success&tanda=${tandaId}&user=${userId}`,
-                failure: `${APP_URL}/pagos?status=failure&tanda=${tandaId}&user=${userId}`,
-                pending: `${APP_URL}/pagos?status=pending&tanda=${tandaId}&user=${userId}`,
+              success: `${APP_URL}/pago-exitoso?tanda=${tandaId}&user=${userId}&monto=${monto}&tipo=${concepto}`,
+              failure: `${APP_URL}/pagos?status=failure&tanda=${tandaId}&user=${userId}`,
+              pending: `${APP_URL}/pagos?status=pending&tanda=${tandaId}&user=${userId}`,
             },
             auto_return: "approved",  // <--- AGREGADO AQUÍ
             metadata: {
