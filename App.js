@@ -68,6 +68,10 @@ const wearosRoutes         = require('./routes/wearos');
 // ————— Importar rutas específicas de Alexa —————
 const alexaAuthRoutes = require('./routes/alexa'); 
 const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
+// Rutas de validación
+const emailRoutes = require('./routes/validate');       // aquí está validate-email
+const phoneRoutes = require('./routes/validatePhone');  // aquí está validate-phone
+const cupomexRoutes = require('./routes/cupomex');      // estados/municipios/colonias
 
 
 // ————— Montaje de rutas —————
@@ -96,6 +100,10 @@ app.use('/api/openpay', openpayRoutes);
 app.use('/api/mercadopago', mercadopagoRoutes);
 app.use('/api/wearos', wearosRoutes);
 app.use('/api/solicitudes-prestamo', solicitudesPrestamoRoutes);
+app.use('/api', emailRoutes);       // -> /api/validate-email
+app.use('/api', phoneRoutes);       // -> /api/validate-phone
+app.use('/api/cupomex', cupomexRoutes); // -> /api/cupomex/estados, /api/cupomex/municipios, /api/cupomex/colonias
+
 
 // **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
 app.use('/api/alexa', alexaAuthRoutes);
