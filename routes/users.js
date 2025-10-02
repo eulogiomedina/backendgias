@@ -1,11 +1,15 @@
 const express = require('express');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const User = require('../models/User');
 const router = express.Router();
-const Token = require('../models/Token');
 const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware');
-// Ruta para registrar usuario
+const SibApiV3Sdk = require('@sendinblue/client'); // Cliente oficial de Brevo
+
+// Configuración de Brevo (Sendinblue)
+let apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+
+// ========================= REGISTRO =========================
 router.post('/register', async (req, res) => {
   const { nombre, apellidos, correo, password, telefono, estado, municipio, colonia } = req.body;
 
@@ -27,40 +31,43 @@ router.post('/register', async (req, res) => {
       telefono,
       direccion: { estado, municipio, colonia },
       verificationToken,
-      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // Validez de 24 horas
+      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24h
     });
 
-    // Guardar el usuario en la base de datos
+    // Guardar el usuario
     await newUser.save();
 
-    // Configurar y enviar el correo de verificación
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER, // Tu correo de Gmail
-        pass: process.env.EMAIL_PASS, // Contraseña de la aplicación o cuenta
-      },
-    });
-
+    // URL para verificar
     const verificationUrl = `https://backendgias.onrender.com/api/users/verify/${verificationToken}`;
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: correo,
-      subject: 'GIAS Verificación de correo',
-      text: `Haz clic en el siguiente enlace para verificar tu correo: ${verificationUrl}`,
-      html: `<p>Haz clic en el siguiente enlace para verificar tu correo:</p><a href="${verificationUrl}">${verificationUrl}</a>`,
+
+    // === Enviar correo con Brevo ===
+    const sendSmtpEmail = {
+      to: [{ email: correo, name: `${nombre} ${apellidos}` }],
+      sender: { email: process.env.EMAIL_USER_BREVO, name: "Grupo GIAS" },
+      subject: "GIAS - Verificación de correo",
+      htmlContent: `
+        <h2>¡Hola ${nombre}!</h2>
+        <p>Gracias por registrarte en <b>GIAS</b>.</p>
+        <p>Para activar tu cuenta, haz clic en el siguiente enlace:</p>
+        <a href="${verificationUrl}" target="_blank">${verificationUrl}</a>
+        <br><br>
+        <p>Este enlace expira en 24 horas.</p>
+      `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
 
-    res.status(201).json({ message: 'Usuario registrado. Por favor, verifica tu correo electrónico.' });
+    res.status(201).json({
+      message: 'Usuario registrado. Hemos enviado un correo de verificación. Revisa tu bandeja antes de iniciar sesión.'
+    });
+
   } catch (error) {
     console.error('Error al registrar usuario:', error);
     res.status(500).json({ message: 'Error al registrar usuario', error });
   }
 });
 
-// Ruta para verificar el correo electrónico
+// ========================= VERIFICAR TOKEN =========================
 router.get('/verify/:token', async (req, res) => {
   try {
     const user = await User.findOne({
@@ -73,8 +80,8 @@ router.get('/verify/:token', async (req, res) => {
     }
 
     user.isVerified = true;
-    user.verificationToken = undefined; // Eliminar el token
-    user.verificationTokenExpires = undefined; // Eliminar la expiración del token
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
     await user.save();
 
     res.status(200).json({ message: 'Correo verificado exitosamente. Ya puedes iniciar sesión.' });
@@ -84,7 +91,7 @@ router.get('/verify/:token', async (req, res) => {
   }
 });
 
-// Ruta para obtener todos los usuarios
+// ========================= LISTAR USUARIOS =========================
 router.get('/', async (req, res) => {
   try {
     const users = await User.find();
@@ -94,6 +101,5 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: 'Error al obtener usuarios' });
   }
 });
-
 
 module.exports = router;
