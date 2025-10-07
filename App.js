@@ -72,6 +72,7 @@ const solicitudesPrestamoRoutes = require('./routes/solicitudesPrestamo');
 const emailRoutes = require('./routes/validate');       // aquí está validate-email
 const phoneRoutes = require('./routes/validatePhone');  // aquí está validate-phone
 const cupomexRoutes = require('./routes/cupomex');      // estados/municipios/colonias
+const googleCheckRoutes = require("./routes/googleCheck");
 
 
 // ————— Montaje de rutas —————
@@ -103,6 +104,8 @@ app.use('/api/solicitudes-prestamo', solicitudesPrestamoRoutes);
 app.use('/api', emailRoutes);       // -> /api/validate-email
 app.use('/api', phoneRoutes);       // -> /api/validate-phone
 app.use('/api/cupomex', cupomexRoutes); // -> /api/cupomex/estados, /api/cupomex/municipios, /api/cupomex/colonias
+app.use("/api/google", googleCheckRoutes);
+
 
 
 // **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
