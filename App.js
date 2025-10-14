@@ -13,7 +13,7 @@ const app = express();
  
 // Habilitar CORS
 const corsOptions = {
-  origin: 'https://forntendgias.vercel.app', //  https://forntendgias.vercel.app----http://localhost:3000
+  origin: 'http://localhost:3000', //  https://forntendgias.vercel.app----http://localhost:3000
   credentials: true, // Para permitir cookies, si es necesario
 };
 app.use(cors(corsOptions));
@@ -73,7 +73,7 @@ const emailRoutes = require('./routes/validate');       // aquí está validate-
 const phoneRoutes = require('./routes/validatePhone');  // aquí está validate-phone
 const cupomexRoutes = require('./routes/cupomex');      // estados/municipios/colonias
 const googleAuthRoute = require('./routes/googleAuth');
-
+const resetMobileRoutes = require("./routes/resetMobile");
 
 
 // ————— Montaje de rutas —————
@@ -106,6 +106,7 @@ app.use('/api', emailRoutes);       // -> /api/validate-email
 app.use('/api', phoneRoutes);       // -> /api/validate-phone
 app.use('/api/cupomex', cupomexRoutes); // -> /api/cupomex/estados, /api/cupomex/municipios, /api/cupomex/colonias
 app.use('/api/google', googleAuthRoute);
+app.use("/api/reset-mobile", resetMobileRoutes);
 
 
 
