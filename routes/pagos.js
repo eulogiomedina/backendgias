@@ -42,6 +42,7 @@ const validarPagoAutomatico = async (comprobanteUrl, montoEsperado, cuentaDestin
     let conPenalizacion = false;
 
     // 🧠 Buscar monto detectado en el texto con mayor precisión
+    // 🧠 Buscar monto detectado en el texto con mayor precisión
   const montoClaveRegex = /(monto|importe|total|transferencia|mxn)[^\d]{0,10}(\$?\s*\d{2,5}(?:[\.,]\d{2})?)/gi;
   const coincidenciaClave = textoExtraido.match(montoClaveRegex);
 
@@ -191,6 +192,7 @@ function extraerFecha(texto) {
 }
 
 // 📌 REGISTRAR PAGO CON VALIDACIÓN Y PENALIZACIÓN
+
 router.post("/", upload.single("comprobante"), async (req, res) => {
   try {
     const { userId, tandaId, monto } = req.body;
@@ -270,20 +272,9 @@ router.post("/", upload.single("comprobante"), async (req, res) => {
     
     // Si el pago está atrasado, enviar notificación adicional
     if (nuevoPago.conPenalizacion) {
-      await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
-    }
+  await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
+}
 
-    // 📱 Crear notificación para móvil/Wear OS
-    await NotificacionWearOS.create({
-      userId,
-      tipo: resultadoOCR.estado === "Aprobado" ? "pago_exitoso"
-            : resultadoOCR.estado === "Rechazado" ? "pago_rechazado"
-            : "recordatorio_pago",
-      titulo: resultadoOCR.estado === "Aprobado" ? "Pago aprobado 💰"
-            : resultadoOCR.estado === "Rechazado" ? "Pago rechazado ❌"
-            : "Pago pendiente ⏳",
-      mensaje: resultadoOCR.mensaje,
-    });
 
     res.json({
       message: resultadoOCR.mensaje,
@@ -295,7 +286,150 @@ router.post("/", upload.single("comprobante"), async (req, res) => {
   }
 });
 
-// 📌 OTRA RUTA DE PAGO (MercadoPago)
+// 📌 ACTIVIDAD RECIENTE AGRUPADA POR TANDA
+router.get('/actividad-reciente', async (req, res) => {
+  try {
+    // Trae todas las tandas activas
+    const tandas = await Tanda.find({});
+    const resultado = [];
+
+    for (const tanda of tandas) {
+      // Busca los últimos 5 pagos de la tanda (ajusta el límite si quieres)
+      const pagos = await Pago.find({ tandaId: tanda._id })
+        .sort({ createdAt: -1 }) // Más recientes primero (asegúrate de tener timestamps en tu modelo)
+        .limit(5)
+        .populate("userId", "nombre apellidos"); // trae nombre del usuario
+
+      if (pagos.length > 0) {
+        resultado.push({
+          id: tanda._id,
+          nombre: tanda.nombre,
+          color: "text-blue-700", // Puedes variar color según el tipo si quieres
+          eventos: pagos.map(pago => ({
+            usuario: pago.userId
+              ? `${pago.userId.nombre} ${pago.userId.apellidos || ""}`.trim()
+              : "Desconocido",
+            estado: pago.estado, // "verificado", "pendiente", "rechazado"
+            fecha: pago.createdAt
+              ? pago.createdAt.toISOString().split('T')[0]
+              : "",
+          }))
+        });
+      }
+    }
+
+    res.json(resultado);
+  } catch (err) {
+    console.error("Error en /actividad-reciente:", err);
+    res.status(500).json({ error: "Error al obtener actividad reciente" });
+  }
+});
+
+// 📊 RESUMEN DE PAGOS (para dashboard)
+router.get('/resumen', async (req, res) => {
+  try {
+    const tandas = await Tanda.find();
+    let pendientes = 0, verificados = 0, revision = 0;
+
+    for (const tanda of tandas) {
+      for (const fecha of tanda.fechasPago) {
+        // Busca el pago de ese participante en ese ciclo (periodo)
+        const pago = await Pago.findOne({
+          userId: fecha.userId,
+          tandaId: tanda._id,
+          fechaPago: fecha.fechaPago
+        });
+
+        if (!fecha.fechaPago) continue; // Si la fecha es null, es periodo de recibo, ignora
+
+        if (!pago) {
+          // No existe registro de pago → pendiente
+          pendientes++;
+        } else if (pago.estado && pago.estado.toLowerCase() === "verificado") {
+          verificados++;
+        } else if (pago.estado && pago.estado.toLowerCase() === "revision") {
+          revision++;
+        } else if (pago.estado && pago.estado.toLowerCase() === "rechazado") {
+          // Suma como pendiente si fue rechazado (puede intentarse de nuevo)
+          pendientes++;
+        }
+      }
+    }
+
+    res.json({ pendientes, verificados, revision });
+  } catch (err) {
+    console.error("Error en /resumen:", err);
+    res.status(500).json({ error: "Error al obtener resumen" });
+  }
+});
+
+
+// 📌 OBTENER PAGOS DE UN USUARIO
+router.get("/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pagos = await Pago.find({ userId }).populate("tandaId", "monto tipo");
+
+    if (!pagos || pagos.length === 0) {
+      return res.status(404).json({ message: "No se encontraron pagos para este usuario." });
+    }
+
+    res.json(pagos);
+  } catch (error) {
+    console.error("❌ Error al obtener pagos:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
+// 📌 OBTENER TODOS LOS PAGOS (para el panel de administración)
+router.get("/", async (req, res) => {
+  try {
+    const pagos = await Pago.find()
+      .populate("userId", "nombre correo") // ✅ Para que puedas mostrar nombre en el frontend
+      .populate("tandaId", "monto tipo");
+
+    res.json(pagos);
+  } catch (error) {
+    console.error("❌ Error al obtener todos los pagos:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
+// 📌 Aprobar un pago manualmente
+router.patch("/:pagoId/aprobar", async (req, res) => {
+  try {
+    const { pagoId } = req.params;
+    const pago = await Pago.findByIdAndUpdate(
+      pagoId,
+      { estado: "Aprobado" },
+      { new: true }
+    );
+    if (!pago) return res.status(404).json({ message: "Pago no encontrado." });
+
+    res.json({ message: "Pago aprobado correctamente.", pago });
+  } catch (error) {
+    console.error("❌ Error al aprobar pago:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
+
+// 📌 Rechazar un pago manualmente
+router.patch("/:pagoId/rechazar", async (req, res) => {
+  try {
+    const { pagoId } = req.params;
+    const pago = await Pago.findByIdAndUpdate(
+      pagoId,
+      { estado: "Rechazado" },
+      { new: true }
+    );
+    if (!pago) return res.status(404).json({ message: "Pago no encontrado." });
+
+    res.json({ message: "Pago rechazado correctamente.", pago });
+  } catch (error) {
+    console.error("❌ Error al rechazar pago:", error);
+    res.status(500).json({ message: "Error en el servidor", error });
+  }
+});
 router.post("/mercadopago", async (req, res) => {
   try {
     const { userId, tandaId, monto } = req.body;
@@ -357,14 +491,6 @@ router.post("/mercadopago", async (req, res) => {
     });
 
     await nuevoPago.save();
-
-    // 📱 Crear notificación para MercadoPago también
-    await NotificacionWearOS.create({
-      userId,
-      tipo: "pago_exitoso",
-      titulo: "Pago registrado 💰",
-      mensaje: `Tu pago de $${monto} fue aprobado automáticamente por MercadoPago.`,
-    });
 
     res.json({ message: "Pago registrado correctamente por MercadoPago.", pago: nuevoPago });
   } catch (error) {
