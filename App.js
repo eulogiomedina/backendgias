@@ -10,7 +10,7 @@ const path = require('path');
 
 dotenv.config();
 const app = express();
- 
+
 // Habilitar CORS
 const corsOptions = {
   origin: 'https://forntendgias.vercel.app', //  https://forntendgias.vercel.app----http://localhost:3000
@@ -39,7 +39,7 @@ app.use(session({
   genid: () => crypto.randomBytes(32).toString('hex'),
 }));
 
-// Importar rutas
+// ————— Importar rutas —————
 const usersRoute = require('./routes/users');
 const authRoute = require('./routes/auth');
 const policyRoute = require('./routes/policyRoutes');  // Rutas de políticas
@@ -63,7 +63,7 @@ const cuentaDestinoRoutes = require("./routes/cuentaDestino");
 const notificacionesRouter = require('./routes/notificaciones');
 const openpayRoutes = require('./routes/openpayRoutes');
 const mercadopagoRoutes = require('./routes/mercadopago');
-const wearosRoutes         = require('./routes/wearos');
+const wearosRoutes = require('./routes/wearos');
 
 // ————— Importar rutas específicas de Alexa —————
 const alexaAuthRoutes = require('./routes/alexa'); 
@@ -74,7 +74,7 @@ const phoneRoutes = require('./routes/validatePhone');  // aquí está validate-
 const cupomexRoutes = require('./routes/cupomex');      // estados/municipios/colonias
 const googleAuthRoute = require('./routes/googleAuth');
 const resetMobileRoutes = require("./routes/resetMobile");
-
+const notificacionesMovil = require("./routes/notificacionesMovil");
 
 // ————— Montaje de rutas —————
 app.use('/api/users', usersRoute);
@@ -97,10 +97,14 @@ app.use("/api/tandas", tandasRoutes);
 app.use("/api/pagos", pagosRoutes);
 app.use('/api', estadoRoutes);
 app.use("/api/cuenta-destino", cuentaDestinoRoutes);
-app.use('/api/notificaciones', notificacionesRouter);
+
+// ✅ Separación clara de notificaciones
+app.use('/api/notificaciones', notificacionesRouter);           // general (sistema y web)
+app.use('/api/movil/notificaciones', notificacionesMovil);      // móvil (React Native / Expo)
+app.use('/api/wearos/notificaciones', wearosRoutes);            // Wear OS (reloj inteligente)
+
 app.use('/api/openpay', openpayRoutes); 
 app.use('/api/mercadopago', mercadopagoRoutes);
-app.use('/api/wearos', wearosRoutes);
 app.use('/api/solicitudes-prestamo', solicitudesPrestamoRoutes);
 app.use('/api', emailRoutes);       // -> /api/validate-email
 app.use('/api', phoneRoutes);       // -> /api/validate-phone
@@ -108,16 +112,15 @@ app.use('/api/cupomex', cupomexRoutes); // -> /api/cupomex/estados, /api/cupomex
 app.use('/api/google', googleAuthRoute);
 app.use("/api/reset-mobile", resetMobileRoutes);
 
-
-
-
 // **NUEVO**: todas las rutas de Alexa quedan centralizadas bajo `/api/alexa`
 app.use('/api/alexa', alexaAuthRoutes);
+
 // Ruta para verificar que el servidor funciona
 app.get('/', (req, res) => {
   res.send('¡Servidor funcionando!');
 });
 
+// Cierre de sesión
 app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) return res.status(500).send('No se pudo cerrar la sesión');
@@ -126,6 +129,7 @@ app.post('/api/auth/logout', (req, res) => {
   });
 });
 
+// Manejadores de errores globales
 app.use((err, req, res, next) => {
   console.error('[GLOBAL ERROR]', err.stack);
   res.status(err.status || 500).json({ errorCode: err.status || 500 });
