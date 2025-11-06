@@ -410,4 +410,30 @@ router.delete("/:tandaId", async (req, res) => {
   }
 });
 
+// 📌 Obtener una tanda específica por ID
+router.get("/:tandaId", async (req, res) => {
+  try {
+    const { tandaId } = req.params;
+    const tanda = await Tanda.findById(tandaId)
+      .populate("participantes.userId", "nombre apellidos correo telefono");
+
+    if (!tanda) {
+      return res.status(404).json({ message: "Tanda no encontrada." });
+    }
+
+    tanda.participantes.sort((a, b) => a.orden - b.orden);
+
+    const faltantesParaLlenarse = tanda.totalCiclos - tanda.participantes.length;
+
+    res.json({ 
+      ...tanda.toObject(), 
+      faltantesParaLlenarse 
+    });
+  } catch (error) {
+    console.error("❌ Error en GET /api/tandas/:tandaId:", error);
+    res.status(500).json({ message: "Error en el servidor", error: error.message });
+  }
+});
+
+
 module.exports = router;
