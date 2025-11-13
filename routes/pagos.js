@@ -212,26 +212,41 @@ router.post("/", upload.single("comprobante"), async (req, res) => {
 
     const hoy = new Date();
 
-    // 🧾 Obtener historial de pagos previos del usuario en esta tanda
-    const historialPagos = await Pago.find({ userId, tandaId });
+    // 🧾 Obtener historial de pagos previos
+const historialPagos = await Pago.find({ userId, tandaId }).sort({ fechaPago: 1 });
 
-    // 🔍 Buscar próxima fecha pendiente que aún no haya sido pagada
-    const fechasPendientes = tanda.fechasPago
-      .filter(f =>
-        f.userId.toString() === userId &&
-        f.fechaPago &&
-        !historialPagos.some(h =>
-          h.fechaPago &&
-          new Date(h.fechaPago).getTime() === new Date(f.fechaPago).getTime()
-        )
+// 🟡 Detectar último pago realizado (si existe)
+const ultimoPago = historialPagos[historialPagos.length - 1];
+
+// 🟥 CASO 1: Último pago fue RECHAZADO → permitir pagar otra vez
+let proximaFechaPago;
+
+if (ultimoPago && ultimoPago.estado === "Rechazado") {
+  // Usamos la misma fecha del pago rechazado
+  proximaFechaPago = { fechaPago: ultimoPago.fechaPago };
+} else {
+  // 🟢 CASO 2: Buscar próxima fecha que aún no haya sido pagada
+  const fechasPendientes = tanda.fechasPago
+    .filter(f =>
+      f.userId.toString() === userId &&
+      f.fechaPago &&
+      !historialPagos.some(h =>
+        h.fechaPago &&
+        new Date(h.fechaPago).getTime() === new Date(f.fechaPago).getTime()
       )
-      .sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago));
+    )
+    .sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago));
 
-    const proximaFechaPago = fechasPendientes[0]; // La más próxima aún no pagada
+  proximaFechaPago = fechasPendientes[0];
+}
 
-    if (!proximaFechaPago) {
-      return res.status(400).json({ message: "Ya no tienes fechas pendientes de pago." });
-    }
+// 🚫 CASO 3: Último pago fue APROBADO Y no hay más fechas → bloquear
+if (!proximaFechaPago) {
+  return res.status(400).json({
+    message: "Ya no tienes fechas pendientes de pago."
+  });
+}
+
 
     // 🔴 Verificar si está atrasado (comparando la fecha con hoy)
     const estaAtrasado = new Date(proximaFechaPago.fechaPago) < hoy;
