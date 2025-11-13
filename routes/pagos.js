@@ -10,8 +10,6 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const Tesseract = require("tesseract.js");
 const { enviarNotificacionEstadoPago, enviarNotificacionAtraso } = require("../utils/emailService");
 const { verifyAccessToken } = require('../middlewares/accessTokenMiddleware');
-const NotificacionWearOS = require("../models/NotificacionWearOS");
-
 
 // 📦 Configuración de Cloudinary
 cloudinary.config({
@@ -498,5 +496,35 @@ router.post("/mercadopago", async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error });
   }
 });
+
+// 📌 Obtener el último pago pendiente o rechazado del usuario
+router.get("/pendiente-o-rechazado/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const pago = await Pago.findOne({
+      userId,
+      estado: { $in: ["Pendiente", "Rechazado"] }
+    }).sort({ fechaPago: 1 }); // el más reciente
+
+    if (!pago) {
+      return res.json({ tienePagoPendiente: false });
+    }
+
+    res.json({
+      tienePagoPendiente: true,
+      pagoId: pago._id,
+      tandaId: pago.tandaId,
+      monto: pago.monto,
+      estado: pago.estado,
+      mensajeOCR: pago.mensajeOCR || null
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error en servidor", error });
+  }
+});
+
 
 module.exports = router;
