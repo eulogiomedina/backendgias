@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require("crypto");
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 const nodemailer = require('nodemailer');
-const User = require('../models/User'); // Ajusta el path si tu modelo es diferente
-const Pago = require('../models/Pago'); // Ajusta la ruta según tu estructura
+
+const User = require('../models/User');
+const Pago = require('../models/Pago');
+const Tanda = require('../models/Tanda');
 
 require('dotenv').config();
 
@@ -13,10 +16,14 @@ const client = new MercadoPagoConfig({
 
 const APP_URL = "https://forntendgias.vercel.app";
 
-// ----------- CREAR PREFERENCIA MERCADO PAGO --------------
+
+// ----------------------------------------------
+// 1. CREAR PREFERENCIA (SIN CAMBIOS GRANDES)
+// ----------------------------------------------
 router.post('/create_preference', async (req, res) => {
   try {
-    const { concepto, cantidad, monto, userId, tandaId } = req.body;
+    const { concepto, monto, userId, tandaId } = req.body;
+
     if (!concepto || !monto || !userId || !tandaId) {
       return res.status(400).json({ error: 'Faltan datos del pago' });
     }
@@ -39,7 +46,6 @@ router.post('/create_preference', async (req, res) => {
         tandaId
       }
     };
-    console.log("BACK_URLS GENERADAS:", preference.back_urls);
 
     const preferenceClient = new Preference(client);
     const result = await preferenceClient.create({ body: preference });
@@ -50,114 +56,137 @@ router.post('/create_preference', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("❌ Error creando preferencia MercadoPago:", error);
-    res.status(500).json({
-      error: 'Error al crear preferencia de pago',
-      message: error.message
-    });
+    console.error("❌ Error creando preferencia:", error);
+    res.status(500).json({ error: 'Error al crear preferencia' });
   }
 });
 
-// ----------- WEBHOOK PARA REGISTRAR PAGO Y ENVIAR CORREO --------------
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
+// ----------------------------------------------
+// 2. WEBHOOK — VALIDACIÓN Y REGISTRO DE PAGO
+// ----------------------------------------------
 router.post('/webhook', async (req, res) => {
   try {
-    console.log("======> WEBHOOK RECIBIDO:");
+    // 🔹 1. Responder de inmediato para que MercadoPago no marque error
+    res.status(200).send("OK");
+
+    console.log("📩 WEBHOOK RECIBIDO:");
     console.log(JSON.stringify(req.body, null, 2));
 
-    const body = req.body;
-    if (body.type === "payment") {
-      const paymentId = body.data.id;
-      console.log("===> Consultando pago MercadoPago ID:", paymentId);
-
-      // Usar el SDK de mercadopago para consultar el pago
-      const mp = require('mercadopago');
-      mp.configure({ access_token: process.env.MP_ACCESS_TOKEN });
-
-      let payment;
-      try {
-        payment = await mp.payment.findById(paymentId);
-        console.log("===> payment.body:", JSON.stringify(payment.body, null, 2));
-      } catch (err) {
-        console.error("❌ ERROR al consultar el pago en MercadoPago:", err.message, err.response?.body || err);
-        return res.status(400).send("Error consultando el pago en MercadoPago");
-      }
-
-      if (payment.body.status === "approved") {
-        const userId = payment.body.metadata.userId;
-        const tandaId = payment.body.metadata.tandaId;
-
-        let user;
-        try {
-          user = await User.findById(userId);
-          if (!user) {
-            throw new Error('Usuario no encontrado');
-          }
-        } catch (err) {
-          console.error("❌ ERROR buscando usuario en MongoDB:", err.message);
-          return res.status(400).send("Usuario no encontrado");
-        }
-
-        // --- GUARDAR EL PAGO EN LA BASE DE DATOS ---
-        const pagoObj = {
-          userId,
-          tandaId,
-          monto: payment.body.transaction_amount,
-          fechaPago: payment.body.date_approved,
-          estado: "Aprobado",
-          metodo: "MercadoPago",
-          comprobanteUrl: payment.body.receipt_url || "",
-          referenciaPago: payment.body.id,
-        };
-
-        console.log("===> Intentando guardar Pago en MongoDB:", pagoObj);
-
-        try {
-          await Pago.create(pagoObj);
-          console.log("===> Pago guardado correctamente en la colección Pago");
-        } catch (err) {
-          console.error("❌ ERROR al guardar en Pago:", err);
-        }
-
-        // --- ENVIAR CORREO AL USUARIO ---
-        try {
-          await transporter.sendMail({
-            from: `"GIAS Pagos" <${process.env.EMAIL_USER}>`,
-            to: user.correo,
-            subject: 'Comprobante de pago - GIAS',
-            html: `
-              <h2>¡Pago realizado correctamente!</h2>
-              <p>Hola ${user.nombre},</p>
-              <p>Tu pago de la tanda <b>${payment.body.description}</b> por <b>$${payment.body.transaction_amount} MXN</b> se ha recibido con éxito.</p>
-              <p>ID de pago: <b>${payment.body.id}</b></p>
-              <p>Fecha: ${new Date(payment.body.date_approved).toLocaleString()}</p>
-              <p>¡Gracias por confiar en GIAS!</p>
-            `,
-          });
-          console.log("===> Correo enviado a:", user.correo);
-        } catch (err) {
-          console.error("❌ ERROR al enviar correo:", err);
-        }
-      } else {
-        console.log("===> El pago no está aprobado, no se guarda ni se envía correo.");
-      }
-    } else {
-      console.log("===> No es evento de pago, ignorado.");
+    // 🔹 2. Validar tipo de evento
+    if (req.body.type !== "payment") {
+      console.log("➡ No es un evento de pago. Se ignora.");
+      return;
     }
-    res.status(200).send('OK');
+
+    const paymentId = req.body.data.id;
+
+    // 🔹 3. Consultar información del pago
+    const mp = require('mercadopago');
+    mp.configure({ access_token: process.env.MP_ACCESS_TOKEN });
+
+    const payment = await mp.payment.findById(paymentId);
+
+    console.log("💲 Respuesta de MercadoPago:");
+    console.log(JSON.stringify(payment.body, null, 2));
+
+    if (payment.body.status !== "approved") {
+      console.log("🚫 Pago no aprobado, ignorado.");
+      return;
+    }
+
+    // 🔹 4. Datos desde metadata
+    const userId = payment.body.metadata.userId;
+    const tandaId = payment.body.metadata.tandaId;
+
+    if (!userId || !tandaId) {
+      console.log("⚠ NO HAY METADATA — no se puede registrar el pago.");
+      return;
+    }
+
+    // -----------------------------------------
+    // 5. Buscar tanda y fecha del ciclo correcto
+    // -----------------------------------------
+    const tanda = await Tanda.findById(tandaId);
+    if (!tanda) {
+      console.log("❌ Tanda no encontrada.");
+      return;
+    }
+
+    const historialPagos = await Pago.find({ userId, tandaId });
+
+    const fechaPendiente = tanda.fechasPago.find(f =>
+      f.userId.toString() === userId &&
+      !historialPagos.some(h => h.fechaPago.getTime() === new Date(f.fechaPago).getTime())
+    );
+
+    if (!fechaPendiente) {
+      console.log("⚠ No hay fecha pendiente. Pago duplicado.");
+      return;
+    }
+
+    // Penalización por atraso
+    const hoy = new Date();
+    const atrasado = new Date(fechaPendiente.fechaPago) < hoy;
+    const comision = atrasado ? 80 : 0;
+
+    // -----------------------------------------
+    // 6. Guardar el pago correctamente
+    // -----------------------------------------
+    const nuevoPago = new Pago({
+      userId,
+      tandaId,
+      monto: payment.body.transaction_amount + comision,
+      fechaPago: fechaPendiente.fechaPago, // ← ciclo correcto
+      estado: "Aprobado",
+      metodo: "MercadoPago",
+      atraso: atrasado,
+      comision,
+      comprobanteUrl: "",
+      referenciaPago: payment.body.id,
+      mensajeOCR: "Pago procesado automáticamente desde MercadoPago."
+    });
+
+    await nuevoPago.save();
+
+    console.log("✅ Pago registrado correctamente en MongoDB:", nuevoPago._id);
+
+
+    // -----------------------------------------
+    // 7. Enviar correo de confirmación (opcional)
+    // -----------------------------------------
+    const user = await User.findById(userId);
+    if (user) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"GIAS Pagos" <${process.env.EMAIL_USER}>`,
+        to: user.correo,
+        subject: 'Comprobante de pago - GIAS',
+        html: `
+          <h2>¡Pago aprobado!</h2>
+          <p>Hola ${user.nombre},</p>
+          <p>Tu pago por la tanda <b>${payment.body.description}</b> ha sido recibido exitosamente.</p>
+          <p>Monto: <b>$${payment.body.transaction_amount} MXN</b></p>
+          <p>Fecha asignada al ciclo: ${new Date(fechaPendiente.fechaPago).toLocaleDateString()}</p>
+          <p>ID MercadoPago: ${payment.body.id}</p>
+        `,
+      });
+
+      console.log("📧 Correo enviado correctamente.");
+    }
+
   } catch (err) {
-    console.error("Webhook error:", err);
-    console.error("Stack:", err.stack);
-    res.status(500).send('Error');
+    console.error("❌ ERROR en webhook:", err);
   }
 });
 
+
+// ----------------------------------------------
 module.exports = router;
