@@ -278,15 +278,15 @@ if (!proximaFechaPago) {
     await nuevoPago.save();
 
     // Obtener información del usuario para el correo
-    const usuario = await User.findById(userId);
+    //const usuario = await User.findById(userId);
     
     // Enviar notificación por correo
-    await enviarNotificacionEstadoPago(usuario, nuevoPago, tanda);
+    //await enviarNotificacionEstadoPago(usuario, nuevoPago, tanda);
     
     // Si el pago está atrasado, enviar notificación adicional
-    if (nuevoPago.conPenalizacion) {
-  await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
-}
+    //if (nuevoPago.conPenalizacion) {
+  //await enviarNotificacionAtraso(usuario, nuevoPago, tanda);
+//}
 
 
     res.json({
